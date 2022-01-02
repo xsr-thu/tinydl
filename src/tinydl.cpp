@@ -2,8 +2,9 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
-#include "elementwise.h"
-#include "reduction.h"
+#include "opr/elementwise.h"
+#include "opr/reduction.h"
+#include "opr/matmul.h"
 
 
 PYBIND11_MODULE(tinydl, m) {
@@ -18,6 +19,8 @@ PYBIND11_MODULE(tinydl, m) {
     m.def("op_log", &opr::log);
     m.def("op_exp", &opr::exp);
     m.def("op_sigmoid", &opr::sigmoid);
+    
+    m.def("op_matmul", &opr::matmul);
 
     m.def("op_reduce_sum", &opr::reduce_sum, 
             py::arg("input"), py::arg("axis"), py::arg("keep_dim")=false);

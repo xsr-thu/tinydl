@@ -56,6 +56,16 @@ class TestTensor(TestCase):
         tz_np = tz.to_numpy()
         self.assertTrue((z == tz_np).all())
 
+    def test_matmul(self):
+        x = np.eye(33).astype("float32")
+        y = np.ones((33, 32)).astype("float32")
+        x = tinydl.Tensor(x)
+        y = tinydl.Tensor(y)
+        z = tinydl.op_matmul(x, y)
+        z = z.to_numpy()
+        print(z)
+        print(z.shape)
+
 
 if __name__ == "__main__":
     unittest.main()

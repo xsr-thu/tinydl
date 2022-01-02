@@ -1,6 +1,6 @@
 #include "tensor.h"
-#include "elementwise.h"
-#include "reduction.h"
+#include "opr/elementwise.h"
+#include "opr/reduction.h"
 
 
 Tensor::Tensor(py::array_t<float> arr) {

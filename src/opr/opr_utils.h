@@ -1,8 +1,38 @@
 #ifndef __OPR_UTILS_H_
 #define __OPR_UTILS_H_
 
+#include <sstream>
 #include <cuda_runtime.h>
 #include "tensor.h"
+
+
+
+template<typename T>
+struct ToStringTrait {
+    static std::string to_string(T &data);
+};
+
+template<typename T>
+struct ToStringTrait<std::vector<T>> {
+    static std::string to_string(std::vector<T> &data) {
+        std::stringstream ss;
+        ss << "(";
+        for(int i=0;i<data.size(); i++) {
+            ss << data[i];
+            if(i!=data.size() - 1)
+                ss << ", ";
+        }
+        ss << ")";
+        return ss.str();
+    }
+};
+
+
+template<typename T>
+std::string to_string(T &data) {
+    return ToStringTrait<T>::to_string(data);
+}
+
 
 struct TensorFormat{
     static const size_t MAX_DIM=7;
@@ -40,7 +70,24 @@ struct TensorFormat{
         return dev_format;
     }
 
-
+    std::string to_string() {
+        std::stringstream ss;
+        printf("tostring dim=%lu\n", dim);
+        ss << "<Tensor shape=(";
+        for(int i=0; i < dim; i++) {
+            if(i>0)
+                ss << ", ";
+            ss << shape[i];
+        }
+        ss << "), strides=(";
+        for(int i=0; i < dim; i++) {
+            if(i>0)
+                ss << ", ";
+            ss << strides[i];
+        }
+        ss << ")>";
+        return ss.str();
+    }
 
     void release() {
         cudaFree(this);
