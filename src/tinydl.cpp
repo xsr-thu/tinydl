@@ -7,7 +7,7 @@
 #include "opr/matmul.h"
 
 
-PYBIND11_MODULE(tinydl, m) {
+PYBIND11_MODULE(_tinydl, m) {
     m.doc() = "pybind11 simple example";
 
     m.def("op_add", &opr::add);

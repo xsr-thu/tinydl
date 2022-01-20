@@ -6,8 +6,9 @@ PYBIND_INC := $(shell python3 -m pybind11 --includes)
 
 SUFFIX := $(shell python3-config --extension-suffix)
 
-build/tinydl${SUFFIX}: build/tensor.o build/opr/elementwise.o build/opr/reduction.o build/opr/matmul.o build/tinydl.o
+build/_tinydl${SUFFIX}: build/tensor.o build/opr/elementwise.o build/opr/reduction.o build/opr/matmul.o build/tinydl.o
 	${CXX} $^ -o $@ ${PYBIND_INC} ${CXXFLAG} -shared -lcuda -lcudart
+	cp $@ tinydl/_tinydl${SUFFIX}
 
 
 
