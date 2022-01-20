@@ -53,10 +53,10 @@ __global__ void kernel_matmul(float *out, TensorFormat *out_format,
 namespace opr{
 
 Tensor matmul(const Tensor &x, const Tensor &y) {
-    vector<size_t> x_shape = x.m_shape;
-    vector<size_t> y_shape = y.m_shape;
-    vector<size_t> x_strides = x.m_strides;
-    vector<size_t> y_strides = y.m_strides;
+    vector<size_t> x_shape = x.m_storage->m_shape;
+    vector<size_t> y_shape = y.m_storage->m_shape;
+    vector<size_t> x_strides = x.m_storage->m_strides;
+    vector<size_t> y_strides = y.m_storage->m_strides;
 
     bool x_extended = false;
     if(x_shape.size() == 2) {
@@ -98,7 +98,7 @@ Tensor matmul(const Tensor &x, const Tensor &y) {
             (output_shape[2] +block_size - 1)/block_size, 
             output_shape[0]);
     
-    kernel_matmul<<<blocks, threads>>>(res, out_format, x.m_data.get(), x_format, y.m_data.get(), y_format);
+    kernel_matmul<<<blocks, threads>>>(res, out_format, x.m_storage->m_data, x_format, y.m_storage->m_data, y_format);
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
         printf("error\n");

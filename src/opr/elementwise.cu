@@ -74,19 +74,19 @@ Tensor binary_op(BinaryOpMode mode, Tensor x, Tensor y) {
     assert(x.size() == y.size());
     assert(x.dim() == y.dim());
     for(size_t i=0; i<x.dim(); i++)
-        assert(x.m_shape[i] == y.m_shape[i]);
+        assert(x.m_storage->m_shape[i] == y.m_storage->m_shape[i]);
 
     float *res;
     cudaMalloc(&res, sizeof(float) * x.size());
 
     int block_size = 128;
     int n_block = (x.size() + block_size - 1) / block_size;
-    kernel_binary_op<<<n_block, block_size>>>(res, x.m_data.get(), y.m_data.get(), x.size(), mode);
+    kernel_binary_op<<<n_block, block_size>>>(res, x.m_storage->m_data, y.m_storage->m_data, x.size(), mode);
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
         printf("error\n");
     }
-    return Tensor(res, x.m_shape, x.m_strides);
+    return Tensor(res, x.m_storage->m_shape, x.m_storage->m_strides);
 }
 
 
@@ -96,12 +96,12 @@ Tensor unary_op(UnaryOpMode mode, Tensor x) {
 
     int block_size = 128;
     int n_block = (x.size() + block_size - 1) / block_size;
-    kernel_binary_op<<<n_block, block_size>>>(res, x.m_data.get(), x.size(), mode);
+    kernel_binary_op<<<n_block, block_size>>>(res, x.m_storage->m_data, x.size(), mode);
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
         printf("error\n");
     }
-    return Tensor(res, x.m_shape, x.m_strides);
+    return Tensor(res, x.m_storage->m_shape, x.m_storage->m_strides);
 }
 
 

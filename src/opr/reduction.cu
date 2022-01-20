@@ -56,7 +56,7 @@ __global__ void kernel_reduction_op(float *out, TensorFormat *out_format, float*
 }
 
 Tensor reduction(const ReductionMode mode, const Tensor &input, const vector<size_t> &axis, const bool keep_dim) {
-    vector<size_t> output_shape = input.m_shape;
+    vector<size_t> output_shape = input.m_storage->m_shape;
     vector<size_t> output_strides;
     size_t output_size = sizeof(float);
     bool keep[MAX_DIM]={};
@@ -77,7 +77,7 @@ Tensor reduction(const ReductionMode mode, const Tensor &input, const vector<siz
 
     int block_size = 128;
     int n_block = (output_size + block_size - 1) / block_size;
-    kernel_reduction_op<<<n_block, block_size>>>(res, out_format, input.m_data.get(), in_format, mode);
+    kernel_reduction_op<<<n_block, block_size>>>(res, out_format, input.m_storage->m_data, in_format, mode);
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
         printf("error\n");
