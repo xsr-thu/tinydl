@@ -56,6 +56,7 @@ struct TensorFormat{
 
     static TensorFormat* make_cuda_tensor_format(vector<size_t> &shape, vector<size_t> &strides) {
         size_t size = 1;
+        cudaError_t err;
         for(size_t s: shape) {
             size *= s;
         }
@@ -65,8 +66,15 @@ struct TensorFormat{
             format.strides[i] = strides[i];
         }
         TensorFormat *dev_format;
-        cudaMalloc(&dev_format, sizeof(TensorFormat));
-        cudaMemcpy(dev_format, &format, sizeof(TensorFormat), cudaMemcpyHostToDevice);
+        err = cudaMalloc(&dev_format, sizeof(TensorFormat));
+        if (err != cudaSuccess) {
+            printf("cuda error %s\n", cudaGetErrorString(err));
+        }
+        err = cudaMemcpy(dev_format, &format, sizeof(TensorFormat), cudaMemcpyHostToDevice);
+        if (err != cudaSuccess) {
+            printf("cuda error %s\n", cudaGetErrorString(err));
+        }
+        // printf("make format: %zu %p\n", format.shape[0], dev_format);
         return dev_format;
     }
 

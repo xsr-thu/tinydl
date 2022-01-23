@@ -3,7 +3,7 @@
 
 namespace opr{
 
-Tensor matmul(const Tensor &x, const Tensor &y);
+Tensor matmul(Tensor &x, Tensor &y);
 
 }
 #endif

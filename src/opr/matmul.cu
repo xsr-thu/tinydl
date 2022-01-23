@@ -1,4 +1,3 @@
-
 #include "opr_utils.h"
 
 
@@ -49,14 +48,27 @@ __global__ void kernel_matmul(float *out, TensorFormat *out_format,
         out[out_idx] = ans;
 }
 
+void print_shape(vector<size_t> &data) {
+    for(size_t i: data)
+        printf("%zu ", i);
+    printf("\n");
+}
 
-namespace opr{
 
-Tensor matmul(const Tensor &x, const Tensor &y) {
-    vector<size_t> x_shape = x.m_storage->m_shape;
-    vector<size_t> y_shape = y.m_storage->m_shape;
-    vector<size_t> x_strides = x.m_storage->m_strides;
-    vector<size_t> y_strides = y.m_storage->m_strides;
+shared_ptr<TensorStorage> matmul_op(const shared_ptr<TensorStorage> x, bool x_transpose, const shared_ptr<TensorStorage> &y, bool y_transpose) {
+    vector<size_t> x_shape = x->m_shape;
+    vector<size_t> y_shape = y->m_shape;
+    vector<size_t> x_strides = x->m_strides;
+    vector<size_t> y_strides = y->m_strides;
+
+    // printf("matmul_op data 1 shape: ");
+    // print_shape(x_shape);
+    // printf("matmul_op data 1 strides: ");
+    // print_shape(x_strides);
+    // printf("matmul_op data 2 shape: ");
+    // print_shape(y_shape);
+    // printf("matmul_op data 2 strides: ");
+    // print_shape(y_strides);
 
     bool x_extended = false;
     if(x_shape.size() == 2) {
@@ -70,18 +82,25 @@ Tensor matmul(const Tensor &x, const Tensor &y) {
         y_strides.insert(y_strides.begin(), y_strides[0]);
         y_extended = true;
     }
+    if(x_transpose) {
+        swap(x_shape[1], x_shape[2]);
+        swap(x_strides[1], x_strides[2]);
+    }
+    if(y_transpose) {
+        swap(y_shape[1], y_shape[2]);
+        swap(y_strides[1], y_strides[2]);
+    }
     assert(x_shape[2] == y_shape[1]);
-    
     
     vector<size_t> output_shape;
     vector<size_t> output_strides;
-    size_t output_size = sizeof(float);
+    size_t output_size = 1;
     output_shape.push_back(max(x_shape[0], y_shape[0]));
     output_shape.push_back(x_shape[1]);
     output_shape.push_back(y_shape[2]);
 
     for(size_t i=0;i<output_shape.size();i++) {
-        output_strides.push_back(output_size);
+        output_strides.push_back(output_size * sizeof(float));
         output_size *= output_shape[i];
     }
     float *res;
@@ -98,7 +117,7 @@ Tensor matmul(const Tensor &x, const Tensor &y) {
             (output_shape[2] +block_size - 1)/block_size, 
             output_shape[0]);
     
-    kernel_matmul<<<blocks, threads>>>(res, out_format, x.m_storage->m_data, x_format, y.m_storage->m_data, y_format);
+    kernel_matmul<<<blocks, threads>>>(res, out_format, x->m_data, x_format, y->m_data, y_format);
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
         printf("error\n");
@@ -110,7 +129,64 @@ Tensor matmul(const Tensor &x, const Tensor &y) {
         output_shape.erase(output_shape.begin());
         output_strides.erase(output_strides.begin());
     }
-    return Tensor(res, output_shape, output_strides);
+    // printf("output_size: %zu\n", output_size);
+    // printf("matmul_op output shape: ");
+    // print_shape(output_shape);
+    // printf("matmul_op output strides: ");
+    // print_shape(output_strides);
+    return make_shared<TensorStorage>(res, output_size, output_shape, output_strides);
+}
+
+
+shared_ptr<TensorStorage> matmul_op(const shared_ptr<TensorStorage> x, const shared_ptr<TensorStorage> &y) {
+    return matmul_op(x, false, y, false);
+}
+
+
+struct MatmulOpBackwarFunc: BackwardFunc {
+    static std::shared_ptr<BackwardFunc> make(shared_ptr<GraphNode> x, shared_ptr<GraphNode> y){
+        shared_ptr<BackwardFunc> func = make_shared<MatmulOpBackwarFunc>();
+        func->m_input_nodes.push_back(x);
+        func->m_input_nodes.push_back(y);
+        return func;
+    }
+
+    void backward_func(shared_ptr<GraphNode> out_node) override {
+        shared_ptr<TensorStorage> out_grad = out_node->m_grad_storage;
+        shared_ptr<TensorStorage> x1 = m_saved_tensors[0];
+        shared_ptr<TensorStorage> x2 = m_saved_tensors[1];
+        
+        shared_ptr<TensorStorage> g1 = matmul_op(out_grad, false, x2, true);
+        shared_ptr<TensorStorage> g2 = matmul_op(x1, true, out_grad, false);
+        
+        m_input_nodes[0]->acc_grad(g1);
+        m_input_nodes[1]->acc_grad(g2);
+    }
+};
+
+
+Tensor matmul_op(Tensor &x, Tensor &y) {
+    Tensor res = Tensor(matmul_op(x.m_storage, y.m_storage));
+    if(x.m_need_grad || y.m_need_grad || x.m_require_grad || y.m_require_grad) {
+        shared_ptr<GraphNode> x_node = x.graph_node();
+        shared_ptr<GraphNode> y_node = y.graph_node();
+        shared_ptr<GraphNode> out_node = res.graph_node();
+        shared_ptr<BackwardFunc> func = MatmulOpBackwarFunc::make(x_node, y_node);
+    
+        func->m_saved_tensors.push_back(x.m_storage);
+        func->m_saved_tensors.push_back(y.m_storage);
+        
+        out_node->set_backward_func(func);
+        out_node->m_need_grad = true;
+        res.m_need_grad = true;
+    }
+    return res;
+}
+
+namespace opr{
+
+Tensor matmul(Tensor &x, Tensor &y) {
+    return matmul_op(x, y);
 }
 
 }

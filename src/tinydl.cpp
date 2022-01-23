@@ -27,7 +27,15 @@ PYBIND11_MODULE(_tinydl, m) {
     m.def("op_reduce_mean", &opr::reduce_mean,
             py::arg("input"), py::arg("axis"), py::arg("keep_dim")=false);
 
-    py::class_ <Tensor>(m, "Tensor")
+    py::class_ <Tensor, shared_ptr<Tensor>>(m, "Tensor")
         .def(py::init<py::array_t<float> &>())
+        .def("require_grad_", &Tensor::require_grad)
+        .def("backward", &Tensor::backward)
+        .def("grad_fn", &Tensor::grad_fn)
+        .def("grad", &Tensor::grad)
+        .def("graph_node", &Tensor::graph_node)
         .def("to_numpy", &Tensor::to_numpy);
+
+    py::class_<BackwardFunc, shared_ptr<BackwardFunc>>(m, "BackwardFunc");
+    py::class_<GraphNode, shared_ptr<GraphNode>>(m, "GraphNode");
 }
