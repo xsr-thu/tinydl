@@ -1,6 +1,7 @@
 import numpy as np
 
 from . import _tinydl
+from . import operators as opr
 
 
 class Tensor:
@@ -8,20 +9,37 @@ class Tensor:
     def __init__(self, data):
         if isinstance(data, _tinydl.Tensor):
             self.data = data
-        else:
+        elif isinstance(data, np.ndarray):
             self.data = _tinydl.Tensor(data)
+        else:
+            self.data = _tinydl.Tensor(np.array(data, dtype=np.float32))
 
     def __add__(self, other):
-        return Tensor(_tinydl.op_add(self.data, other.data))
+        return opr.add(self, other)
 
     def __sub__(self, other):
-        return Tensor(_tinydl.op_sub(self.data, other.data))
+        return opr.sub(self, other)
 
     def __mul__(self, other):
-        return Tensor(_tinydl.op_mul(self.data, other.data))
+        return opr.mul(self, other)
 
     def __truediv__(self, other):
-        return Tensor(_tinydl.op_div(self.data, other.data))
+        return opr.div(self, other)
+
+    def sum(self, axis, keep_dim=False):
+        return opr.sum(self, axis, keep_dim)
+
+    def mean(self, axis, keep_dim=False):
+        return opr.mean(self, axis, keep_dim)
+
+    def log(self):
+        return opr.log(self)
+
+    def exp(self):
+        return opr.exp(self)
+
+    def relu(self):
+        return opr.relu(self)
 
     def require_grad_(self, r):
         self.data.require_grad_(r)
@@ -34,6 +52,16 @@ class Tensor:
 
     def to_numpy(self):
         return self.data.to_numpy()
+    numpy = to_numpy
+
+    def shape(self):
+        return self.numpy().shape
+
+    def __str__(self):
+        return self.numpy().__str__()
+
+    def __repr__(self):
+        return "Tensor({})".format(self.numpy().__str__())
 
 # class Tensor(_tinydl.Tensor):
 #     # def __new__(cls, data, *args, **kwargs):
