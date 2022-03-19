@@ -6,8 +6,8 @@
 
 namespace opr {
 
-Tensor reduce_sum(const Tensor &input, const vector<size_t> &axis, const bool keep_dim=false);
-Tensor reduce_mean(const Tensor &input, const vector<size_t> &axis, const bool keep_dim=false);
+Tensor reduce_sum(Tensor &input, const vector<size_t> &axis, const bool keep_dim=false);
+Tensor reduce_mean(Tensor &input, const vector<size_t> &axis, const bool keep_dim=false);
 
 }
 

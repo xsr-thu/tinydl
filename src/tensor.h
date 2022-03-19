@@ -43,6 +43,12 @@ struct TensorStorage {
     : m_data(std::make_shared<RawTensor>(data)), m_size(size), m_shape(shape), m_strides(strides) {
     }
 
+    TensorStorage(shared_ptr<TensorStorage> old_storage, vector<size_t> &shape, vector<size_t> &strides)
+    : m_data(old_storage->m_data), m_size(old_storage->size()), m_shape(shape), m_strides(strides) {
+    }
+
+    static shared_ptr<TensorStorage> zeros(vector<size_t> &shape);
+
     size_t dim() {
         return m_shape.size();
     }
@@ -83,6 +89,7 @@ struct Tensor {
     }
 
     static Tensor& get_const(float val);
+    // static Tensor zeros(vector<size_t> &shape);
 
     ~Tensor();
 
@@ -104,8 +111,12 @@ struct Tensor {
 
     std::shared_ptr<GraphNode> graph_node() {
         if(!m_graph_node) {
-            // printf("create graph node for %zu(%p)\n", this->m_id, this);
-            m_graph_node = make_shared<GraphNode>(m_require_grad, m_need_grad, m_id);
+            // fprintf(stderr, "create graph node for %zu(%p)\n", this->m_id, this);
+            // for(int i=0;i< m_storage->m_shape.size(); i++) {
+            //     fprintf(stderr, "id=%zu %d %lu\n", m_id, i, m_storage->m_shape[i]);
+            // }
+
+            m_graph_node = make_shared<GraphNode>(m_require_grad, m_need_grad, m_id, m_storage->m_shape);
         }
         return m_graph_node;
     }

@@ -7,7 +7,25 @@ void GraphNode::acc_grad(shared_ptr<TensorStorage> grad) {
     if(!m_require_grad && !m_need_grad)
         return;
     if(!m_grad_storage) {
-        m_grad_storage = opr::intl::copy(grad);
+        bool layout_is_same = true;
+        if(m_shape.size() == grad->m_shape.size()) {
+            for(int i=0; i < m_shape.size(); i++) {
+                // TODO: fix non-contiougous layout
+                // add Layout abstract
+                if(m_shape[i] != grad->m_shape[i]) {
+                    layout_is_same = false;
+                    break;
+                }
+            }
+        } else {
+            layout_is_same = false;
+        }
+        if (layout_is_same) {
+            m_grad_storage = opr::intl::copy(grad);
+        } else {
+            m_grad_storage = TensorStorage::zeros(m_shape);
+            m_grad_storage = opr::intl::add(m_grad_storage, grad);
+        }
     } else {
         m_grad_storage = opr::intl::add(m_grad_storage, grad);
     }

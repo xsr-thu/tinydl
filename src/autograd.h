@@ -12,13 +12,13 @@ struct TensorStorage;
 struct GraphNode {
     bool m_require_grad;
     bool m_need_grad;
+    vector<size_t> m_shape;
     size_t m_id;
     shared_ptr<TensorStorage> m_grad_storage;
     shared_ptr<BackwardFunc> m_backward_func;
 
-    GraphNode(bool require_grad, bool need_grad, size_t id)
-        : m_require_grad(require_grad), m_need_grad(need_grad), m_id(id) {
-        // printf("GraphNode ctor\n");
+    GraphNode(bool require_grad, bool need_grad, size_t id, vector<size_t> &shape)
+        : m_require_grad(require_grad), m_need_grad(need_grad), m_id(id), m_shape(shape) {
     }
 
     void acc_grad(shared_ptr<TensorStorage> grad);

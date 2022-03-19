@@ -5,6 +5,23 @@
 size_t Tensor::sm_id = 0;
 unordered_map<float, Tensor> Tensor::sm_const_cache;
 
+
+shared_ptr<TensorStorage> TensorStorage::zeros(vector<size_t> &shape) {
+    float *dev;
+    size_t size = 1;
+    vector<size_t> strides(shape.size());
+
+    for(int i=shape.size() - 1; i>=0; --i) {
+        strides[i] = size * sizeof(float);
+        size *= shape[i];
+    }
+
+    cudaMalloc(&dev, sizeof(float) * size);
+    cudaMemset(dev, 0., sizeof(float) * size);
+    return make_shared<TensorStorage>(dev, size, shape, strides);
+}
+
+
 Tensor::Tensor(py::array_t<float> arr) {
     py::buffer_info info = arr.request();
     size_t size = 1;
@@ -55,6 +72,22 @@ Tensor& Tensor::get_const(float val) {
 }
 
 
+// Tensor zeros(vector<size_t> &shape) {
+//     float *dev;
+//     size_t size = 1;
+//     vector<size_t> strides(shape.size());
+//
+//     for(int i=shape.size() - 1; i>=0; --i) {
+//         strides[i] = size * sizeof(float);
+//         size *= shape[i];
+//     }
+//
+//     cudaMalloc(&dev, sizeof(float) * size);
+//     cudaMemset(dev, sizeof(float) * size);
+//     return Tensor(dev, shape, strides);
+// }
+
+
 Tensor::~Tensor() {
     // cudaFree(m_data);
     // printf("Tensor dtor: %zu\n", m_id);
@@ -80,7 +113,7 @@ py::array_t<float> Tensor::to_numpy() {
 
 void Tensor::backward(Tensor &grad) {
     if(!m_graph_node) {
-        printf("can not backward!");
+        fprintf(stderr, "can not backward!\n");
     } else {
         m_graph_node->m_grad_storage = grad.m_storage;
         backprop(m_graph_node);

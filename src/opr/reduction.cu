@@ -55,7 +55,41 @@ __global__ void kernel_reduction_op(float *out, TensorFormat *out_format, float*
     out[idx] = ans;
 }
 
-Tensor reduction(const ReductionMode mode, const Tensor &input, const vector<size_t> &axis, const bool keep_dim) {
+
+struct ReductionBackwardFunc: BackwardFunc {
+    vector<size_t> m_old_shape;
+    bool m_keep_dim;
+
+    static std::shared_ptr<BackwardFunc> make(shared_ptr<GraphNode> x, std::vector<size_t> &shape, bool keep_dim){
+        shared_ptr<ReductionBackwardFunc> func = make_shared<ReductionBackwardFunc>();
+        func->m_input_nodes.push_back(x);
+        func->m_old_shape = shape;
+        func->m_keep_dim = keep_dim;
+        return func;
+    }
+
+    void backward_func(shared_ptr<GraphNode> out_node) override {
+        shared_ptr<TensorStorage> out_grad = out_node->m_grad_storage;
+        if(!m_keep_dim) {
+            vector<size_t> old_strides(m_old_shape.size());
+            size_t s = sizeof(float);
+            for(int i=m_old_shape.size() - 1; i>=0; --i) {
+                old_strides[i] = s;
+                s *= m_old_shape[i];
+            }
+
+            shared_ptr<TensorStorage> new_storage = make_shared<TensorStorage>(
+                    out_grad, m_old_shape, old_strides);
+            m_input_nodes[0]->acc_grad(new_storage);
+        } else {
+            m_input_nodes[0]->acc_grad(out_grad);
+        }
+    }
+};
+
+
+
+Tensor reduction(const ReductionMode mode, Tensor &input, const vector<size_t> &axis, const bool keep_dim) {
     vector<size_t> output_shape = input.m_storage->m_shape;
     vector<size_t> output_strides;
     size_t output_size = sizeof(float);
@@ -84,8 +118,7 @@ Tensor reduction(const ReductionMode mode, const Tensor &input, const vector<siz
     }
     out_format->release();
     in_format->release();
-    if(keep_dim)
-        return Tensor(res, output_shape, output_strides);
+
     vector<size_t> out_shape;
     vector<size_t> out_strides;
     for(size_t i=0; i<output_shape.size(); i++) {
@@ -94,17 +127,35 @@ Tensor reduction(const ReductionMode mode, const Tensor &input, const vector<siz
             out_strides.push_back(output_strides[i]);
         }
     }
-    return Tensor(res, out_shape, out_strides);
+
+    Tensor res_tensor;
+    if(keep_dim) {
+        res_tensor = Tensor(res, output_shape, output_strides);
+    } else {
+        res_tensor = Tensor(res, out_shape, out_strides);
+    }
+
+    if(input.m_require_grad || input.m_need_grad) {
+        shared_ptr<GraphNode> out_node = res_tensor.graph_node();
+        shared_ptr<GraphNode> input_node = input.graph_node();
+
+        shared_ptr<BackwardFunc> func = ReductionBackwardFunc::make(input_node, out_shape, keep_dim);
+
+        out_node->set_backward_func(func);
+        out_node->m_need_grad = true;
+        res_tensor.m_need_grad = true;
+    }
+    return res_tensor;
 }
 
 namespace opr{
 
-Tensor reduce_sum(const Tensor &input, const vector<size_t> &axis, const bool keep_dim) {
+Tensor reduce_sum(Tensor &input, const vector<size_t> &axis, const bool keep_dim) {
     return reduction(ReductionMode::SUM, input, axis, keep_dim);
 }
 
 
-Tensor reduce_mean(const Tensor &input, const vector<size_t> &axis, const bool keep_dim) {
+Tensor reduce_mean(Tensor &input, const vector<size_t> &axis, const bool keep_dim) {
     return reduction(ReductionMode::MEAN, input, axis, keep_dim);
 }
 
