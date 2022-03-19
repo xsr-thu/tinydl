@@ -173,7 +173,7 @@ shared_ptr<TensorStorage> binary_op(BinaryOpMode mode, shared_ptr<TensorStorage>
 
         int block_size = 128;
         int n_block = (x->size() + block_size - 1) / block_size;
-        kernel_binary_op<<<n_block, block_size>>>(res, x->m_data, y->m_data, x->size(), mode);
+        kernel_binary_op<<<n_block, block_size>>>(res, x->data(), y->data(), x->size(), mode);
         cudaError_t err = cudaGetLastError();
         if (err != cudaSuccess) {
             printf("cuda error %s\n", cudaGetErrorString(err));
@@ -246,8 +246,8 @@ shared_ptr<TensorStorage> binary_op(BinaryOpMode mode, shared_ptr<TensorStorage>
         int n_block = (res_size + block_size - 1) / block_size;
 
         kernel_binary_op<<<n_block, block_size>>>(res, out_format,
-                x->m_data, x_format, 
-                y->m_data, y_format, 
+                x->data(), x_format, 
+                y->data(), y_format, 
                 res_size, mode);
         cudaError_t err = cudaGetLastError();
         if (err != cudaSuccess) {
@@ -264,7 +264,7 @@ shared_ptr<TensorStorage> unary_op(UnaryOpMode mode, shared_ptr<TensorStorage> x
 
     int block_size = 128;
     int n_block = (x->size() + block_size - 1) / block_size;
-    kernel_unary_op<<<n_block, block_size>>>(res, x->m_data, x->size(), mode);
+    kernel_unary_op<<<n_block, block_size>>>(res, x->data(), x->size(), mode);
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
         printf("cuda error %s\n", cudaGetErrorString(err));
@@ -278,7 +278,7 @@ shared_ptr<TensorStorage> copy_op(shared_ptr<TensorStorage> x) {
     // FIXME: multiply sizeof(float)??
     cudaMalloc(&res, sizeof(float) * x->size());
 
-    cudaMemcpy(res, x->m_data, sizeof(float) * x->size(), cudaMemcpyDeviceToDevice);
+    cudaMemcpy(res, x->data(), sizeof(float) * x->size(), cudaMemcpyDeviceToDevice);
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
         printf("cuda error %s\n", cudaGetErrorString(err));

@@ -77,7 +77,7 @@ Tensor reduction(const ReductionMode mode, const Tensor &input, const vector<siz
 
     int block_size = 128;
     int n_block = (output_size + block_size - 1) / block_size;
-    kernel_reduction_op<<<n_block, block_size>>>(res, out_format, input.m_storage->m_data, in_format, mode);
+    kernel_reduction_op<<<n_block, block_size>>>(res, out_format, input.m_storage->data(), in_format, mode);
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
         printf("error\n");

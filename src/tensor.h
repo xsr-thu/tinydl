@@ -15,14 +15,32 @@ using namespace std;
 struct GraphNode;
 struct BackwardFunc;
 
+
+struct RawTensor {
+    float *m_ptr;
+    RawTensor(float *ptr): m_ptr(ptr) {
+    }
+
+    float* ptr() {
+        return m_ptr;
+    }
+
+    ~RawTensor() {
+        if(m_ptr) {
+            cudaFree(m_ptr);
+        }
+    }
+};
+
+
 struct TensorStorage {
-    float* m_data;
+    std::shared_ptr<RawTensor> m_data;
     size_t m_size;
     vector<size_t> m_shape;
     vector<size_t> m_strides;
 
     TensorStorage(float* data, size_t size, vector<size_t> shape, vector<size_t> strides)
-    : m_data(data), m_size(size), m_shape(shape), m_strides(strides) {
+    : m_data(std::make_shared<RawTensor>(data)), m_size(size), m_shape(shape), m_strides(strides) {
     }
 
     size_t dim() {
@@ -33,9 +51,13 @@ struct TensorStorage {
         return m_size;
     }
 
+    float* data() {
+        return m_data.get()->ptr();
+    }
+
     ~TensorStorage() {
-        if(m_data)
-            cudaFree(m_data);
+        // if(m_data)
+        //    cudaFree(m_data);
     }
 };
 

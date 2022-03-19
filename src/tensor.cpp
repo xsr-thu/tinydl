@@ -74,7 +74,7 @@ py::array_t<float> Tensor::to_numpy() {
     py::buffer_info buf = result.request();
 
     float *ptr = static_cast<float*>(buf.ptr);
-    cudaMemcpy(ptr, m_storage->m_data, sizeof(float) * size(), cudaMemcpyDeviceToHost);
+    cudaMemcpy(ptr, m_storage->data(), sizeof(float) * size(), cudaMemcpyDeviceToHost);
     return result;
 }
 
