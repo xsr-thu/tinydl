@@ -425,18 +425,7 @@ Tensor binary_op(BinaryOpMode mode, Tensor& x, Tensor& y) {
 }
 
 // *****************************************************************************
-template<typename T>
-struct UnaryBackwardFunc: BackwardFunc {
-    static std::shared_ptr<BackwardFunc> make(shared_ptr<GraphNode> x){
-        shared_ptr<BackwardFunc> func = make_shared<T>();
-        func->m_input_nodes.push_back(x);
-        return func;
-    }
-    void backward_func(shared_ptr<GraphNode> out_node) {
-    }
-};
-
-struct ReLUBackwarFunc: UnaryBackwardFunc<ReLUBackwarFunc> {
+struct ReLUBackwardFunc: UnaryBackwardFunc<ReLUBackwardFunc> {
     void backward_func(shared_ptr<GraphNode> out_node) override {
         shared_ptr<TensorStorage> out_grad = out_node->m_grad_storage;
         shared_ptr<TensorStorage> inp = m_saved_tensors[0];
@@ -445,7 +434,7 @@ struct ReLUBackwarFunc: UnaryBackwardFunc<ReLUBackwarFunc> {
     }
 };
 
-struct ExpBackwarFunc: UnaryBackwardFunc<ExpBackwarFunc> {
+struct ExpBackwardFunc: UnaryBackwardFunc<ExpBackwardFunc> {
     void backward_func(shared_ptr<GraphNode> out_node) override {
         shared_ptr<TensorStorage> out_grad = out_node->m_grad_storage;
         shared_ptr<TensorStorage> out = m_saved_tensors[0];
@@ -454,7 +443,7 @@ struct ExpBackwarFunc: UnaryBackwardFunc<ExpBackwarFunc> {
     }
 };
 
-struct LogBackwarFunc: UnaryBackwardFunc<LogBackwarFunc> {
+struct LogBackwardFunc: UnaryBackwardFunc<LogBackwardFunc> {
     void backward_func(shared_ptr<GraphNode> out_node) override {
         shared_ptr<TensorStorage> out_grad = out_node->m_grad_storage;
         shared_ptr<TensorStorage> inp = m_saved_tensors[0];
@@ -463,7 +452,7 @@ struct LogBackwarFunc: UnaryBackwardFunc<LogBackwarFunc> {
     }
 };
 
-struct SigmoidBackwarFunc: UnaryBackwardFunc<SigmoidBackwarFunc> {
+struct SigmoidBackwardFunc: UnaryBackwardFunc<SigmoidBackwardFunc> {
     void backward_func(shared_ptr<GraphNode> out_node) override {
         shared_ptr<TensorStorage> out_grad = out_node->m_grad_storage;
         shared_ptr<TensorStorage> inp = m_saved_tensors[0];
@@ -472,7 +461,7 @@ struct SigmoidBackwarFunc: UnaryBackwardFunc<SigmoidBackwarFunc> {
     }
 };
 
-struct NegBackwarFunc: UnaryBackwardFunc<NegBackwarFunc> {
+struct NegBackwardFunc: UnaryBackwardFunc<NegBackwardFunc> {
     void backward_func(shared_ptr<GraphNode> out_node) override {
         shared_ptr<TensorStorage> out_grad = out_node->m_grad_storage;
         shared_ptr<TensorStorage> res = neg(out_grad);
@@ -480,14 +469,14 @@ struct NegBackwarFunc: UnaryBackwardFunc<NegBackwarFunc> {
     }
 };
 
-struct CopyBackwarFunc: UnaryBackwardFunc<CopyBackwarFunc> {
+struct CopyBackwardFunc: UnaryBackwardFunc<CopyBackwardFunc> {
     void backward_func(shared_ptr<GraphNode> out_node) override {
         shared_ptr<TensorStorage> out_grad = out_node->m_grad_storage;
         m_input_nodes[0]->acc_grad(out_grad);
     }
 };
 
-struct ReciprocalBackwarFunc: UnaryBackwardFunc<ReciprocalBackwarFunc> {
+struct ReciprocalBackwardFunc: UnaryBackwardFunc<ReciprocalBackwardFunc> {
     void backward_func(shared_ptr<GraphNode> out_node) override {
         shared_ptr<TensorStorage> out_grad = out_node->m_grad_storage;
         shared_ptr<TensorStorage> inp = m_saved_tensors[0];
@@ -506,29 +495,29 @@ Tensor unary_op(UnaryOpMode mode, Tensor& x) {
         shared_ptr<BackwardFunc> func;
         switch(mode) {
         case UnaryOpMode::RELU:
-            func = ReLUBackwarFunc::make(x_node);
+            func = ReLUBackwardFunc::make(x_node);
             func->m_saved_tensors.push_back(x.m_storage);
             break;
         case UnaryOpMode::EXP:
-            func = ExpBackwarFunc::make(x_node);
+            func = ExpBackwardFunc::make(x_node);
             func->m_saved_tensors.push_back(res.m_storage);
             break;
         case UnaryOpMode::LOG:
-            func = LogBackwarFunc::make(x_node);
+            func = LogBackwardFunc::make(x_node);
             func->m_saved_tensors.push_back(x.m_storage);
             break;
         case UnaryOpMode::SIGMOID:
-            func = SigmoidBackwarFunc::make(x_node);
+            func = SigmoidBackwardFunc::make(x_node);
             func->m_saved_tensors.push_back(x.m_storage);
             break;
         case UnaryOpMode::NEG:
-            func = NegBackwarFunc::make(x_node);
+            func = NegBackwardFunc::make(x_node);
             break;
         case UnaryOpMode::COPY:
-            func = CopyBackwarFunc::make(x_node);
+            func = CopyBackwardFunc::make(x_node);
             break;
         case UnaryOpMode::RECIPROCAL:
-            func = ReciprocalBackwarFunc::make(x_node);
+            func = ReciprocalBackwardFunc::make(x_node);
             func->m_saved_tensors.push_back(x.m_storage);
             break;
         default:

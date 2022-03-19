@@ -6,6 +6,17 @@
 #include "tensor.h"
 
 
+template<typename T>
+struct UnaryBackwardFunc: BackwardFunc {
+    static std::shared_ptr<BackwardFunc> make(shared_ptr<GraphNode> x){
+        shared_ptr<BackwardFunc> func = make_shared<T>();
+        func->m_input_nodes.push_back(x);
+        return func;
+    }
+    void backward_func(shared_ptr<GraphNode> out_node) {
+    }
+};
+
 
 template<typename T>
 struct ToStringTrait {
