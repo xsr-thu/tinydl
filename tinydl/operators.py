@@ -68,3 +68,7 @@ def mean(x, axis, keep_dim=False):
     if isinstance(axis, int):
         axis = [axis]
     return _as_tensor(_tinydl.op_reduce_mean(x.data, axis, keep_dim))
+
+
+def view(x, shape):
+    return _as_tensor(_tinydl.op_view(x.data, shape))

@@ -41,6 +41,9 @@ class Tensor:
     def relu(self):
         return opr.relu(self)
 
+    def view(self, *axis):
+        return opr.view(self, axis)
+
     def require_grad_(self, r):
         self.data.require_grad_(r)
 

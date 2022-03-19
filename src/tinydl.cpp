@@ -5,6 +5,7 @@
 #include "opr/elementwise.h"
 #include "opr/reduction.h"
 #include "opr/matmul.h"
+#include "opr/trans_layout.h"
 
 
 PYBIND11_MODULE(_tinydl, m) {
@@ -25,8 +26,11 @@ PYBIND11_MODULE(_tinydl, m) {
     m.def("op_log", &opr::log);
     m.def("op_exp", &opr::exp);
     m.def("op_sigmoid", &opr::sigmoid);
-    
+
     m.def("op_matmul", &opr::matmul);
+
+    m.def("op_view", &opr::view,
+            py::arg("tensor"), py::arg("axis"));
 
     m.def("op_reduce_sum", &opr::reduce_sum, 
             py::arg("input"), py::arg("axis"), py::arg("keep_dim")=false);
