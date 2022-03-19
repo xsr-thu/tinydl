@@ -44,7 +44,7 @@ struct TensorFormat{
 
     static TensorFormat* make_cuda_tensor_format(Tensor tensor) {
         TensorFormat format{tensor.size(), tensor.dim()};
-        for(size_t i=0; i<tensor.size(); i++) {
+        for(size_t i=0; i<tensor.dim(); i++) {
             format.shape[i] = tensor.m_storage->m_shape[i];
             format.strides[i] = tensor.m_storage->m_strides[i];
         }

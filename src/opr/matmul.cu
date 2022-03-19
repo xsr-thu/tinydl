@@ -27,12 +27,12 @@ __global__ void kernel_matmul(float *out, TensorFormat *out_format,
         size_t idx_a = batch_stride_a * batch_idx + a_format->strides[1] * idx_x + a_format->strides[2] * (r + inner_y);
         size_t idx_b = batch_stride_b * batch_idx + b_format->strides[2] * idx_y + b_format->strides[1] * (r + inner_x);
         
-        if(idx_x < a_format->shape[1] && a_format->shape[2])
+        if(idx_x < a_format->shape[1] && (r + inner_y) < a_format->shape[2])
             buf_a[inner_x][inner_y] = a[idx_a/sizeof(float)];
         else
             buf_a[inner_x][inner_y] = 0.f;
         
-        if(idx_x < b_format->shape[1] && b_format->shape[2])
+        if((r + inner_x) < b_format->shape[1] && idx_y < b_format->shape[2])
             buf_b[inner_x][inner_y] = b[idx_b/sizeof(float)];
         else
             buf_b[inner_x][inner_y] = 0.f;
@@ -99,10 +99,12 @@ shared_ptr<TensorStorage> matmul_op(const shared_ptr<TensorStorage> x, bool x_tr
     output_shape.push_back(x_shape[1]);
     output_shape.push_back(y_shape[2]);
 
-    for(size_t i=0;i<output_shape.size();i++) {
-        output_strides.push_back(output_size * sizeof(float));
+    output_strides.resize(output_shape.size());
+    for(size_t i=output_shape.size() - 1; i > 0 ; --i) {
+        output_strides[i] = output_size * sizeof(float);
         output_size *= output_shape[i];
     }
+
     float *res;
     cudaMalloc(&res, sizeof(float) * output_size);
 
