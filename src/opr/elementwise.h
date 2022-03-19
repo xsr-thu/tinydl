@@ -14,6 +14,12 @@ namespace opr {
     Tensor mul(Tensor& x, Tensor& y);
     Tensor div(Tensor& x, Tensor& y);
 
+    Tensor equal(Tensor& x, Tensor& y);
+    Tensor less_then(Tensor& x, Tensor& y);
+    Tensor less_equal(Tensor& x, Tensor& y);
+    Tensor greater_then(Tensor& x, Tensor& y);
+    Tensor greater_equal(Tensor& x, Tensor& y);
+
     Tensor relu(Tensor& x);
     Tensor log(Tensor& x);
     Tensor exp(Tensor& x);

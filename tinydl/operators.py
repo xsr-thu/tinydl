@@ -1,10 +1,3 @@
-from ._tinydl import op_add
-from ._tinydl import op_sub
-from ._tinydl import op_mul
-from ._tinydl import op_relu
-from ._tinydl import op_reduce_sum
-from ._tinydl import op_reduce_mean
-from ._tinydl import op_matmul
 from . import _tinydl
 
 
@@ -14,7 +7,7 @@ def _as_tensor(x):
 
 
 def matmul(x, y):
-    return _as_tensor(op_matmul(x.data, y.data))
+    return _as_tensor(_tinydl.op_matmul(x.data, y.data))
 
 
 def log(x):
@@ -43,6 +36,26 @@ def mul(x, y):
 
 def div(x, y):
     return _as_tensor(_tinydl.op_div(x.data, y.data))
+
+
+def equal(x, y):
+    return _as_tensor(_tinydl.op_equal(x.data, y.data))
+
+
+def less_then(x, y):
+    return _as_tensor(_tinydl.op_less_then(x.data, y.data))
+
+
+def less_equal(x, y):
+    return _as_tensor(_tinydl.op_less_equal(x.data, y.data))
+
+
+def greater_then(x, y):
+    return _as_tensor(_tinydl.op_greater_then(x.data, y.data))
+
+
+def greater_equal(x, y):
+    return _as_tensor(_tinydl.op_greater_equal(x.data, y.data))
 
 
 def sum(x, axis, keep_dim=False):

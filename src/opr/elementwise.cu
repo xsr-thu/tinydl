@@ -549,6 +549,26 @@ Tensor div(Tensor& x, Tensor& y) {
     return binary_op(BinaryOpMode::DIV, x, y);
 }
 
+Tensor equal(Tensor& x, Tensor& y) {
+    return binary_op(BinaryOpMode::EQ, x, y);
+}
+
+Tensor less_then(Tensor& x, Tensor& y) {
+    return binary_op(BinaryOpMode::LT, x, y);
+}
+
+Tensor less_equal(Tensor& x, Tensor& y) {
+    return binary_op(BinaryOpMode::LE, x, y);
+}
+
+Tensor greater_then(Tensor& x, Tensor& y) {
+    return binary_op(BinaryOpMode::GT, x, y);
+}
+
+Tensor greater_equal(Tensor& x, Tensor& y) {
+    return binary_op(BinaryOpMode::GE, x, y);
+}
+
 Tensor relu(Tensor& x) {
     return unary_op(UnaryOpMode::RELU, x);
 }
