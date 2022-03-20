@@ -47,6 +47,12 @@ class Tensor:
     def require_grad_(self, r):
         self.data.require_grad_(r)
 
+    def has_grad(self):
+        return self.data.has_grad()
+
+    def zero_grad(self):
+        return self.data.zero_grad()
+
     def backward(self, grad):
         self.data.backward(grad.data)
 
@@ -66,6 +72,12 @@ class Tensor:
     def __repr__(self):
         return "Tensor({})".format(self.numpy().__str__())
 
+
+    def item(self):
+        pass
+
+    def __len__(self):
+        pass
 # class Tensor(_tinydl.Tensor):
 #     # def __new__(cls, data, *args, **kwargs):
 #     #     print(cls)

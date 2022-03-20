@@ -40,11 +40,15 @@ PYBIND11_MODULE(_tinydl, m) {
     py::class_ <Tensor, shared_ptr<Tensor>>(m, "Tensor")
         .def(py::init<py::array_t<float> &>())
         .def("require_grad_", &Tensor::require_grad)
+        .def("zero_grad", &Tensor::zero_grad)
+        .def("has_grad", &Tensor::has_grad)
         .def("backward", &Tensor::backward)
         .def("grad_fn", &Tensor::grad_fn)
         .def("grad", &Tensor::grad)
         .def("graph_node", &Tensor::graph_node)
-        .def("to_numpy", &Tensor::to_numpy);
+        .def("to_numpy", &Tensor::to_numpy)
+        .def("set_value", &Tensor::set_value)
+        .def_readonly("id", &Tensor::m_id);
 
     py::class_<BackwardFunc, shared_ptr<BackwardFunc>>(m, "BackwardFunc");
     py::class_<GraphNode, shared_ptr<GraphNode>>(m, "GraphNode");

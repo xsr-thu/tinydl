@@ -1,6 +1,7 @@
 #include "tensor.h"
 #include "opr/elementwise.h"
 #include "opr/reduction.h"
+#include "opr/opr_utils.h"
 
 size_t Tensor::sm_id = 0;
 unordered_map<float, Tensor> Tensor::sm_const_cache;
@@ -42,6 +43,7 @@ Tensor::Tensor(py::array_t<float> arr) {
     m_storage = make_shared<TensorStorage>(ptr, size, shape, strides);
     m_id = sm_id++;
     // printf("Tensor ctor: %zu\n", m_id);
+    // fprintf(stderr, "Create Tensor(%zu) from numpy shape %s stride %s\n", m_id,  to_string(shape).c_str(), to_string(strides).c_str());
 }
 
 Tensor::Tensor(float *data, vector<size_t> shape, vector<size_t> strides) {
@@ -49,8 +51,19 @@ Tensor::Tensor(float *data, vector<size_t> shape, vector<size_t> strides) {
     for(size_t i=0; i<shape.size(); i++)
         size *= shape[i];
     m_storage = make_shared<TensorStorage>(data, size, shape, strides);
+
     m_id = sm_id++;
     // printf("Tensor ctor: %zu\n", m_id);
+    //
+    // fprintf(stderr, "Create Tensor(%zu) from pointer shape %s stride %s\n", m_id,  to_string(shape).c_str(), to_string(strides).c_str());
+}
+
+
+Tensor::Tensor(shared_ptr<TensorStorage> storage): m_storage(storage) {
+    m_id = sm_id++;
+    // printf("Tensor ctor: %zu\n", m_id);
+    // fprintf(stderr, "Create Tensor(%zu) with storage shape %s stride %s\n",
+    //         m_id,  to_string(m_storage->m_shape).c_str(), to_string(m_storage->m_strides).c_str());
 }
 
 
@@ -103,6 +116,11 @@ size_t Tensor::dim() {
 
 
 py::array_t<float> Tensor::to_numpy() {
+    // fprintf(stderr, "To numpy <%zu>: shape %s strides %s size: %lu\n",
+    //         m_id,
+    //         to_string(m_storage->m_shape).c_str(),
+    //         to_string(m_storage->m_strides).c_str(),
+    //         size());
     auto result = py::array_t<float>(m_storage->m_shape, m_storage->m_strides);
     py::buffer_info buf = result.request();
 
@@ -113,7 +131,7 @@ py::array_t<float> Tensor::to_numpy() {
 
 void Tensor::backward(Tensor &grad) {
     if(!m_graph_node) {
-        fprintf(stderr, "can not backward!\n");
+        fprintf(stderr, "can not backward tensor (%zu)!\n", m_id);
     } else {
         m_graph_node->m_grad_storage = grad.m_storage;
         backprop(m_graph_node);
@@ -132,4 +150,22 @@ shared_ptr<Tensor> Tensor::grad() {
         return nullptr;
     }
     return std::make_shared<Tensor>(m_graph_node->m_grad_storage);
+}
+
+
+void Tensor::zero_grad() {
+    if(m_graph_node && m_graph_node->m_grad_storage) {
+        m_graph_node->m_grad_storage.reset();
+    }
+}
+
+void Tensor::set_value(Tensor &rhs) {
+    // fprintf(stderr, "%zu %zu %zu %zu\n", m_storage->size(), rhs.m_storage->size(), m_storage->dim(), rhs.m_storage->dim());
+    assert(m_storage->size() == rhs.m_storage->size());
+    assert(m_storage->dim() == rhs.m_storage->dim());
+    for(int i=0; i<m_storage->dim(); i++) {
+        assert(m_storage->m_shape[i] == rhs.m_storage->m_shape[i]);
+    }
+
+    m_storage = opr::intl::copy(rhs.m_storage);
 }

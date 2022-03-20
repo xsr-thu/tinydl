@@ -83,10 +83,7 @@ struct Tensor {
 
     Tensor(float *data, vector<size_t> shape, vector<size_t> strides);
 
-    Tensor(shared_ptr<TensorStorage> storage): m_storage(storage) {
-        m_id = sm_id++;
-        // printf("Tensor ctor: %zu\n", m_id);
-    }
+    Tensor(shared_ptr<TensorStorage> storage);
 
     static Tensor& get_const(float val);
     // static Tensor zeros(vector<size_t> &shape);
@@ -102,6 +99,11 @@ struct Tensor {
     void require_grad(bool required) {
         m_require_grad = required;
     }
+
+    bool has_grad() {
+        return m_require_grad;
+    }
+
 
     void backward(Tensor &grad);
 
@@ -125,6 +127,9 @@ struct Tensor {
 
     shared_ptr<Tensor> grad();
 
+    void zero_grad();
+
+    void set_value(Tensor &rhs);
 };
 
 
