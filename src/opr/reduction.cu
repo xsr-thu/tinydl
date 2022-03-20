@@ -1,6 +1,7 @@
 #include <cassert>
 #include "reduction.h"
 #include "opr_utils.h"
+#include "elementwise.h"
 
 enum class ReductionMode {
     UNDEFINED,
@@ -59,17 +60,26 @@ __global__ void kernel_reduction_op(float *out, TensorFormat *out_format, float*
 struct ReductionBackwardFunc: BackwardFunc {
     vector<size_t> m_old_shape;
     bool m_keep_dim;
+    ReductionMode m_mode;
+    size_t m_reduction_size;
 
-    static std::shared_ptr<BackwardFunc> make(shared_ptr<GraphNode> x, std::vector<size_t> &shape, bool keep_dim){
+    static std::shared_ptr<BackwardFunc> make(const ReductionMode mode, size_t reduction_size, shared_ptr<GraphNode> x, std::vector<size_t> &shape, bool keep_dim){
         shared_ptr<ReductionBackwardFunc> func = make_shared<ReductionBackwardFunc>();
         func->m_input_nodes.push_back(x);
         func->m_old_shape = shape;
         func->m_keep_dim = keep_dim;
+        func->m_mode = mode;
+        func->m_reduction_size = reduction_size;
         return func;
     }
 
     void backward_func(shared_ptr<GraphNode> out_node) override {
         shared_ptr<TensorStorage> out_grad = out_node->m_grad_storage;
+
+        if (m_mode == ReductionMode::MEAN) {
+            out_grad = opr::intl::mul(out_grad, Tensor::get_const(1.0/(m_reduction_size)).m_storage);
+        }
+
         if(!m_keep_dim) {
             vector<size_t> old_strides(m_old_shape.size());
             size_t s = sizeof(float);
@@ -87,20 +97,18 @@ struct ReductionBackwardFunc: BackwardFunc {
     }
 };
 
-
-
-Tensor reduction(const ReductionMode mode, Tensor &input, const vector<size_t> &axis, const bool keep_dim) {
-    vector<size_t> output_shape = input.m_storage->m_shape;
-    vector<size_t> output_strides;
-    size_t output_size = sizeof(float);
+shared_ptr<TensorStorage> reduction(const ReductionMode mode, shared_ptr<TensorStorage> input, const vector<size_t> &axis, const bool keep_dim) {
+    vector<size_t> output_shape = input->m_shape;
+    vector<size_t> output_strides(output_shape.size());
+    size_t output_size = 1;
     bool keep[MAX_DIM]={};
     memset(keep, true, MAX_DIM);
     for(size_t i =0;i<axis.size(); i++) {
         output_shape[axis[i]] = 1;
         keep[axis[i]] = false;
     }
-    for(size_t i=0;i<output_shape.size();i++) {
-        output_strides.push_back(output_size);
+    for(int i=output_shape.size() - 1; i>= 0; --i) {
+        output_strides[i] = output_size * sizeof(float);
         output_size *= output_shape[i];
     }
     float *res;
@@ -111,7 +119,7 @@ Tensor reduction(const ReductionMode mode, Tensor &input, const vector<size_t> &
 
     int block_size = 128;
     int n_block = (output_size + block_size - 1) / block_size;
-    kernel_reduction_op<<<n_block, block_size>>>(res, out_format, input.m_storage->data(), in_format, mode);
+    kernel_reduction_op<<<n_block, block_size>>>(res, out_format, input->data(), in_format, mode);
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
         printf("error\n");
@@ -128,22 +136,39 @@ Tensor reduction(const ReductionMode mode, Tensor &input, const vector<size_t> &
         }
     }
 
+    // TODO: check 0 dim tensor
     Tensor res_tensor;
-    if(keep_dim) {
-        res_tensor = Tensor(res, output_shape, output_strides);
-    } else {
-        res_tensor = Tensor(res, out_shape, out_strides);
-    }
 
+    if(keep_dim) {
+        // fprintf(stderr, "reduction --> shape %s stride %s\n", to_string(output_shape).c_str(), to_string(output_strides).c_str());
+        return make_shared<TensorStorage>(res, output_size, output_shape, output_strides);
+    } else {
+        // fprintf(stderr, "reduction --> shape %s stride %s\n", to_string(out_shape).c_str(), to_string(output_strides).c_str());
+        return make_shared<TensorStorage>(res, output_size, out_shape, out_strides);
+    }
+}
+
+
+Tensor reduction(const ReductionMode mode, Tensor &input, const vector<size_t> &axis, const bool keep_dim) {
+    Tensor res_tensor(reduction(mode, input.m_storage, axis, keep_dim));
+    // fprintf(stderr, "setting tensor %zu\n", res_tensor.m_id);
     if(input.m_require_grad || input.m_need_grad) {
         shared_ptr<GraphNode> out_node = res_tensor.graph_node();
         shared_ptr<GraphNode> input_node = input.graph_node();
 
-        shared_ptr<BackwardFunc> func = ReductionBackwardFunc::make(input_node, out_shape, keep_dim);
+        vector<size_t> output_shape = input.m_storage->m_shape;
+        size_t reduction_size = 1;
+        for(size_t i =0;i<axis.size(); i++) {
+            reduction_size *= output_shape[axis[i]];
+            output_shape[axis[i]] = 1;
+        }
+
+        shared_ptr<BackwardFunc> func = ReductionBackwardFunc::make(mode, reduction_size, input_node, output_shape, keep_dim);
 
         out_node->set_backward_func(func);
         out_node->m_need_grad = true;
         res_tensor.m_need_grad = true;
+        // fprintf(stderr, "setting tensor %zu -- add backward\n", res_tensor.m_id);
     }
     return res_tensor;
 }
@@ -159,4 +184,16 @@ Tensor reduce_mean(Tensor &input, const vector<size_t> &axis, const bool keep_di
     return reduction(ReductionMode::MEAN, input, axis, keep_dim);
 }
 
+namespace intl {
+
+
+shared_ptr<TensorStorage> reduce_sum(shared_ptr<TensorStorage> input, const vector<size_t> &axis, const bool keep_dim) {
+    return reduction(ReductionMode::SUM, input, axis, keep_dim);
+}
+
+shared_ptr<TensorStorage> reduce_mean(shared_ptr<TensorStorage> input, const vector<size_t> &axis, const bool keep_dim) {
+    return reduction(ReductionMode::MEAN, input, axis, keep_dim);
+}
+
+}
 }

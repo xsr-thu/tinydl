@@ -5,8 +5,11 @@
 #include <memory>
 #include "tensor.h"
 
+
+// TODO: fix
 std::shared_ptr<TensorStorage> copy(std::shared_ptr<TensorStorage> x);
 shared_ptr<TensorStorage> add(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y);
+shared_ptr<TensorStorage> mul(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y);
 
 namespace opr {
     Tensor add(Tensor& x, Tensor& y);
@@ -29,6 +32,7 @@ namespace opr {
 namespace intl {    
     using ::copy;
     using ::add;
+    using ::mul;
 }
 
 }
