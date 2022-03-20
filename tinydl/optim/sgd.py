@@ -14,6 +14,9 @@ class SGD:
         for n, p in self.named_parameters.items():
             p.set_value(p - self.lr * p.grad())
 
+    def set_lr(self, lr):
+        self.lr = Tensor([lr])
+
     def zero_grad(self):
         for p in self.named_parameters.values():
             p.zero_grad()
