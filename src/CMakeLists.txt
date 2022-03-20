@@ -1,8 +1,6 @@
-
 add_subdirectory(opr)
 
 find_package(CUDAToolkit REQUIRED)
-
 
 file(GLOB SRCS "*.cpp")
 

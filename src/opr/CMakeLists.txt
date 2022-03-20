@@ -1,5 +1,3 @@
-
-
 file(GLOB OPR_SRCS "*.cu")
 
 target_sources(${LIBRARY_NAME} PRIVATE ${OPR_SRCS})
