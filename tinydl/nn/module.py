@@ -6,10 +6,25 @@ from .. import _tinydl
 
 
 class Parameter(Tensor):
+    def __init__(self, *arg, **kwarg):
+        super().__init__(*arg, **kwarg)
+        self.require_grad_(True)
+
     def set_value(self, data):
-        assert isinstance(data, np.ndarray)
-        assert self.shape() == data.shape, "set parameter with shape {} with data shape {}".format(self.shape(), data.shape)
-        self.data = _tinydl.Tensor(data)
+        require_grad = self.data.has_grad()
+        # print("set_value to", data)
+        # from IPython import embed
+        # embed()
+        if isinstance(data, np.ndarray):
+            assert self.shape() == data.shape, "set parameter with shape {} with data shape {}".format(self.shape(), data.shape)
+            t = _tinydl.Tensor(data)
+            # print("set_value", self.shape(), t.to_numpy().shape)
+            self.data.set_value(t)
+        else:
+            assert isinstance(data, Tensor)
+            # print("set_value", self.shape(), data.shape())
+            self.data.set_value(data.data)
+        self.data.require_grad_(require_grad)
 
 
 
@@ -19,13 +34,25 @@ class Module:
         self._modules = OrderedDict()
 
     def parameters(self):
-        return list(self._parameters.value())
+        parameters = list(self._parameters.values())
+        for c in self.children():
+            parameters.extend(c.parameters())
+        return parameters
 
     def named_parameters(self):
-        return list(self._parameters.items())
+        parameters =  OrderedDict(self._parameters.items())
+        for name, mod in self.named_children():
+            for pname, p in mod.named_parameters():
+                parameters["{}.{}".format(name, pname)] = p
+        return parameters.items()
+
+    def children(self):
+        children = list(self._modules.values())
+        return children
 
     def named_children(self):
-        return list(self._modules.items())
+        children =  OrderedDict(self._modules.items())
+        return children.items()
 
     def __setattr__(self, key, value):
         if isinstance(value, Parameter):
