@@ -1,6 +1,7 @@
 #include <cassert>
 #include "tensor.h"
 #include "elementwise.h"
+#include "reduction.h"
 #include "opr_utils.h"
 
 using namespace std;
@@ -165,7 +166,7 @@ shared_ptr<TensorStorage> binary_op(BinaryOpMode mode, shared_ptr<TensorStorage>
     same_layout = same_layout && (x->size() == y->size());
     same_layout = same_layout && (x->dim() == y->dim());
     for(size_t i=0; i<x->dim(); i++)
-        same_layout = same_layout && (x->m_shape[i] == y->m_shape[i]);
+        same_layout = same_layout && (x->m_shape[i] == y->m_shape[i]) && (x->m_strides[i] == y->m_strides[i]);
 
     float *res;
     if(same_layout) {
@@ -237,6 +238,7 @@ shared_ptr<TensorStorage> binary_op(BinaryOpMode mode, shared_ptr<TensorStorage>
             y_format = TensorFormat::make_cuda_tensor_format(y_shape, y_strides);
             out_format = TensorFormat::make_cuda_tensor_format(out_shape, out_strides);
         } else {
+            fprintf(stderr, "binary op error\n");
             throw "Error";
         }
         
@@ -356,8 +358,12 @@ shared_ptr<TensorStorage> reciprocal(shared_ptr<TensorStorage> x) {
 // *****************************************************************************
 struct BinaryOpBackwarFunc: BackwardFunc {
     BinaryOpMode m_mode;
-    static std::shared_ptr<BackwardFunc> make(shared_ptr<GraphNode> x, shared_ptr<GraphNode> y, BinaryOpMode mode){
-        shared_ptr<BackwardFunc> func = make_shared<BinaryOpBackwarFunc>(mode);
+    vector<size_t> m_x_shape;
+    vector<size_t> m_y_shape;
+    static std::shared_ptr<BackwardFunc> make(shared_ptr<GraphNode> x, vector<size_t> &x_shape,
+            shared_ptr<GraphNode> y, vector<size_t> &y_shape,
+            BinaryOpMode mode){
+        shared_ptr<BackwardFunc> func = make_shared<BinaryOpBackwarFunc>(mode, x_shape, y_shape);
         func->m_input_nodes.push_back(x);
         func->m_input_nodes.push_back(y);
         return func;
@@ -365,39 +371,141 @@ struct BinaryOpBackwarFunc: BackwardFunc {
 
     void backward_func(shared_ptr<GraphNode> out_node) override {
         // TODO: check shape
+        vector<size_t> x_reduce_dims;
+        vector<size_t> y_reduce_dims;
+        assert(out_node->m_grad_storage->dim() == m_x_shape.size());
+        assert(out_node->m_grad_storage->dim() == m_y_shape.size());
+
+        // fprintf(stderr, "=========================\n");
+        for(int i=0; i<out_node->m_grad_storage->dim(); i++) {
+            if(out_node->m_grad_storage->m_shape[i] != m_x_shape[i]) {
+                // fprintf(stderr, "dim %d %zu %zu\n", i, out_node->m_grad_storage->m_shape[i], m_x_shape[i]);
+                assert(m_x_shape[i] == 1);
+                x_reduce_dims.push_back(i);
+            }
+            if(out_node->m_grad_storage->m_shape[i] != m_y_shape[i]) {
+                // fprintf(stderr, "dim %d %zu %zu\n", i, out_node->m_grad_storage->m_shape[i], m_y_shape[i]);
+                assert(m_y_shape[i] == 1);
+                y_reduce_dims.push_back(i);
+            }
+        }
+        // FIXME: if inputs do not need grad, does not backprop
+
+
+        // fprintf(stderr, "  - X %s\n", to_string(m_x_shape).c_str());
+        // fprintf(stderr, "  - Y %s\n", to_string(m_y_shape).c_str());
+
         switch(m_mode) {
             case BinaryOpMode::ADD:
-                m_input_nodes[0]->acc_grad(out_node->m_grad_storage);
-                m_input_nodes[1]->acc_grad(out_node->m_grad_storage);
+                // m_input_nodes[0]->acc_grad(out_node->m_grad_storage);
+                // m_input_nodes[1]->acc_grad(out_node->m_grad_storage);
+                // fprintf(stderr, "   add\n");
+                if(x_reduce_dims.size()) {
+                    // fprintf(stderr, " backprop with reduction x n=%zu first=%zu\n", x_reduce_dims.size(), x_reduce_dims[0]);
+                    m_input_nodes[0]->acc_grad(
+                            opr::intl::reduce_sum(out_node->m_grad_storage, x_reduce_dims, true));
+                } else {
+                    m_input_nodes[0]->acc_grad(out_node->m_grad_storage);
+                }
+
+                if(y_reduce_dims.size()) {
+                    // fprintf(stderr, " backprop with reduction y n=%zu first=%zu\n", y_reduce_dims.size(), y_reduce_dims[0]);
+                    m_input_nodes[1]->acc_grad(
+                            opr::intl::reduce_sum(out_node->m_grad_storage, y_reduce_dims, true));
+                } else {
+                    m_input_nodes[1]->acc_grad(out_node->m_grad_storage);
+                }
+
                 break;
             case BinaryOpMode::SUB:
-                m_input_nodes[0]->acc_grad(out_node->m_grad_storage);
-                m_input_nodes[1]->acc_grad(
-                        unary_op(UnaryOpMode::NEG, out_node->m_grad_storage));
+                // fprintf(stderr, "   sub\n");
+                if(x_reduce_dims.size()) {
+                    // fprintf(stderr, " backprop with reduction x n=%zu first=%zu\n", x_reduce_dims.size(), x_reduce_dims[0]);
+                    m_input_nodes[0]->acc_grad(
+                            opr::intl::reduce_sum(out_node->m_grad_storage, x_reduce_dims, true));
+                } else {
+                    m_input_nodes[0]->acc_grad(out_node->m_grad_storage);
+                }
+
+                if(y_reduce_dims.size()) {
+                    // fprintf(stderr, " backprop with reduction y n=%zu first=%zu\n", y_reduce_dims.size(), y_reduce_dims[0]);
+                    m_input_nodes[1]->acc_grad(
+                            opr::intl::reduce_sum(
+                                unary_op(UnaryOpMode::NEG, out_node->m_grad_storage),
+                                y_reduce_dims, true));
+                } else {
+                    m_input_nodes[1]->acc_grad(
+                            unary_op(UnaryOpMode::NEG, out_node->m_grad_storage));
+                }
+
                 break;
             case BinaryOpMode::MUL:
-                m_input_nodes[0]->acc_grad(
-                        binary_op(BinaryOpMode::MUL, 
-                            out_node->m_grad_storage,
-                            m_saved_tensors[1]));
-                m_input_nodes[1]->acc_grad(
-                        binary_op(BinaryOpMode::MUL,
-                            out_node->m_grad_storage,
-                            m_saved_tensors[0]));
+                // fprintf(stderr, "   mul\n");
+
+                if(x_reduce_dims.size()) {
+                    // fprintf(stderr, " backprop with reduction x n=%zu first=%zu\n", x_reduce_dims.size(), x_reduce_dims[0]);
+                    m_input_nodes[0]->acc_grad(
+                            opr::intl::reduce_sum(
+                                binary_op(BinaryOpMode::MUL, out_node->m_grad_storage, m_saved_tensors[1]),
+                                x_reduce_dims, true));
+                } else {
+                    m_input_nodes[0]->acc_grad(
+                            binary_op(BinaryOpMode::MUL,
+                                out_node->m_grad_storage,
+                                m_saved_tensors[1]));
+                }
+
+                if(y_reduce_dims.size()) {
+                    // fprintf(stderr, " backprop with reduction y n=%zu first=%zu\n", y_reduce_dims.size(), y_reduce_dims[0]);
+                    m_input_nodes[1]->acc_grad(
+                            opr::intl::reduce_sum(
+                                binary_op(BinaryOpMode::MUL, out_node->m_grad_storage, m_saved_tensors[0]),
+                                y_reduce_dims, true));
+                } else {
+                    m_input_nodes[1]->acc_grad(
+                            binary_op(BinaryOpMode::MUL,
+                                out_node->m_grad_storage,
+                                m_saved_tensors[0]));
+                }
                 break;
             case BinaryOpMode::DIV:
-                m_input_nodes[0]->acc_grad(
-                        div(out_node->m_grad_storage, m_saved_tensors[1]));
-                m_input_nodes[1]->acc_grad(
-                        neg(div(mul(out_node->m_grad_storage, m_saved_tensors[0]), 
-                                mul(m_saved_tensors[1], m_saved_tensors[1]))));
+                // fprintf(stderr, "   div\n");
+
+                if(x_reduce_dims.size()) {
+                    // fprintf(stderr, " backprop with reduction x n=%zu first=%zu\n", x_reduce_dims.size(), x_reduce_dims[0]);
+                    m_input_nodes[0]->acc_grad(
+                            opr::intl::reduce_sum(
+                                div(out_node->m_grad_storage, m_saved_tensors[1]),
+                                x_reduce_dims, true));
+                } else {
+                    m_input_nodes[0]->acc_grad(
+                            div(out_node->m_grad_storage, m_saved_tensors[1]));
+                }
+
+                if(y_reduce_dims.size()) {
+                    // fprintf(stderr, " backprop with reduction y n=%zu first=%zu\n", y_reduce_dims.size(), y_reduce_dims[0]);
+                    m_input_nodes[1]->acc_grad(
+                            opr::intl::reduce_sum(
+                                neg(div(mul(out_node->m_grad_storage, m_saved_tensors[0]),
+                                        mul(m_saved_tensors[1], m_saved_tensors[1]))),
+                                y_reduce_dims, true));
+                } else {
+                    m_input_nodes[1]->acc_grad(
+                            neg(div(mul(out_node->m_grad_storage, m_saved_tensors[0]),
+                                    mul(m_saved_tensors[1], m_saved_tensors[1]))));
+                }
+
+
+
                 break;
             default:
                 break;
         }
+        // fprintf(stderr, "---------------\n");
     }
 
-    BinaryOpBackwarFunc(BinaryOpMode mode): m_mode(mode) {}
+    BinaryOpBackwarFunc(BinaryOpMode mode, vector<size_t> &x_shape, vector<size_t> &y_shape)
+        : m_mode(mode), m_x_shape(x_shape), m_y_shape(y_shape) {}
 };
 
 
@@ -407,7 +515,7 @@ Tensor binary_op(BinaryOpMode mode, Tensor& x, Tensor& y) {
         shared_ptr<GraphNode> x_node = x.graph_node();
         shared_ptr<GraphNode> y_node = y.graph_node();
         shared_ptr<GraphNode> out_node = res.graph_node();
-        shared_ptr<BackwardFunc> func = BinaryOpBackwarFunc::make(x_node, y_node, mode);
+        shared_ptr<BackwardFunc> func = BinaryOpBackwarFunc::make(x_node, x.m_storage->m_shape, y_node, y.m_storage->m_shape, mode);
         switch(mode) {
         case BinaryOpMode::MUL:
         case BinaryOpMode::DIV:
@@ -587,6 +695,10 @@ Tensor sigmoid(Tensor& x) {
 
 Tensor copy(Tensor& x) {
     return unary_op(UnaryOpMode::COPY, x);
+}
+
+namespace intl {
+
 }
 
 }
