@@ -3,6 +3,7 @@ from collections import OrderedDict
 import numpy as np
 from ..import matmul
 from .. import _tinydl
+from . import init
 
 
 class Parameter(Tensor):
@@ -95,9 +96,13 @@ class Linear(Module):
         self.weight = Parameter(np.random.randn(in_features, out_features).astype(np.float32))
         if self.has_bias:
             self.bias = Parameter(np.zeros((1, out_features), dtype=np.float32))
+        self.init()
 
     def forward(self, data):
         data = matmul(data, self.weight)
         if self.has_bias:
             data = data + self.bias
         return data
+
+    def init(self):
+        init.kaiming_uniform_(self.weight, self.bias)
