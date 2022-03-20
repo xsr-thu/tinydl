@@ -7,7 +7,14 @@ TinyDL 是一个用C++/CUDA实现底层计算和调度，并提供python API接�
 该项目已学习，验证为主，目前仅仅依赖CUDA和pybind11，大部分的kernel均为手写。后续对于Conv等算子会使用CUDNN
 
 # 安装
-1.编译底层的C++/CUDA实现
+1.Clone Repo并更新子模块
+```
+git clone https://github.com/xsr-thu/tinydl.git
+cd tinydl
+git submodule update --init
+```
+
+2.编译底层的C++/CUDA实现
 ```
 mkdir build
 cd build
@@ -15,7 +22,7 @@ cmake ..
 make
 ```
 
-2.安装python库
+3.安装python库
 ```
 python3 setup.py install
 # or
