@@ -2,6 +2,7 @@ from .. import Tensor
 from collections import OrderedDict
 import numpy as np
 from ..import matmul
+from ..import conv2d
 from .. import _tinydl
 from . import init
 
@@ -100,6 +101,31 @@ class Linear(Module):
 
     def forward(self, data):
         data = matmul(data, self.weight)
+        if self.has_bias:
+            data = data + self.bias
+        return data
+
+    def init(self):
+        init.kaiming_uniform_(self.weight, self.bias)
+
+
+class Conv2D(Module):
+    def __init__(self, in_channels, out_channels, kernel_size=3, padding=1, stride=1, bias=True):
+        super().__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.has_bias = bias
+        self.padding = padding
+        self.stride = stride
+        self.weight = Parameter(
+                np.empty((out_channels, in_channels, kernel_size, kernel_size)).astype(np.float32)
+                )
+        if self.has_bias:
+            self.bias = Parameter(np.zeros((1, out_channels, 1, 1), dtype=np.float32))
+        self.init()
+
+    def forward(self, data):
+        data = conv2d(data, self.weight, self.padding, self.stride)
         if self.has_bias:
             data = data + self.bias
         return data
