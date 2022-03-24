@@ -72,3 +72,7 @@ def mean(x, axis, keep_dim=False):
 
 def view(x, shape):
     return _as_tensor(_tinydl.op_view(x.data, shape))
+
+
+def Conv2D(x, w):
+    return _as_tensor(_tinydl.op_conv2d(x.data, w.data))
