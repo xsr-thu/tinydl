@@ -4,6 +4,7 @@ from torchvision.transforms import ToTensor
 from tinydl import nn
 import tinydl
 import numpy as np
+import time
 
 
 class TinydlNet(nn.Module):
@@ -38,6 +39,8 @@ def loss_fn(pred, y):
 
 def train(dataloader, model, loss_fn, optimizer, epoch):
     size = len(dataloader.dataset)
+    model.train()
+    time_used = - time.time()
     for batch, (X, y) in enumerate(dataloader):
         X = X.numpy()
         y = y.numpy()
@@ -55,14 +58,18 @@ def train(dataloader, model, loss_fn, optimizer, epoch):
         optimizer.zero_grad()
 
         if batch % 50 == 0:
+            time_used += time.time()
+            speed = time_used / 50
+            time_used = - time.time()
             loss, current = loss.numpy().item(), batch * X.shape()[0]
-            print(f"[epoch: {epoch}] loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+            print(f"[epoch: {epoch}] loss: {loss:>7f}  [{current:>5d}/{size:>5d}] [{speed:>.3f} s/b]")
 
 
 def test(dataloader, model, loss_fn, epoch):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
     test_loss, correct = 0, 0
+    model.eval()
     for X, y in dataloader:
         X = X.numpy()
         y = y.numpy()
