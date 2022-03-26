@@ -2,16 +2,82 @@
 #include "reduction.h"
 #include "opr_utils.h"
 #include "elementwise.h"
+#include <float.h>
+
 
 enum class ReductionMode {
     UNDEFINED,
     SUM,
     MEAN,
+    MAX,
+    MIN
 };
 
 #define MAX_DIM 7
 
-__global__ void kernel_reduction_op(float *out, TensorFormat *out_format, float* in, TensorFormat *in_format, ReductionMode mode) {
+
+struct SumOp {
+    __device__ inline static float init() {
+        return 0.;
+    }
+
+    __device__ inline static float apply(float s, float x) {
+        return s + x;
+    }
+
+    __device__ inline static float post_process(float x, size_t) {
+        return x;
+    }
+};
+
+
+struct MeanOp {
+    __device__ inline static float init() {
+        return 0.;
+    }
+
+    __device__ inline static float apply(float s, float x) {
+        return s + x;
+    }
+
+    __device__ inline static float post_process(float x, size_t reduction_size) {
+        return x / reduction_size;
+    }
+};
+
+
+struct MaxOp {
+    __device__ inline static float init() {
+        return FLT_MIN;
+    }
+
+    __device__ inline static float apply(float s, float x) {
+        return max(s, x);
+    }
+
+    __device__ inline static float post_process(float x, size_t) {
+        return x;
+    }
+};
+
+
+struct MinOp {
+    __device__ inline static float init() {
+        return FLT_MAX;
+    }
+
+    __device__ inline static float apply(float s, float x) {
+        return min(s, x);
+    }
+
+    __device__ inline static float post_process(float x, size_t) {
+        return x;
+    }
+};
+
+
+template<class Op>
+__global__ void kernel_reduction_op(float *out, TensorFormat *out_format, float* in, TensorFormat *in_format) {
     size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
     if(idx >= out_format->size)
         return;
@@ -24,7 +90,7 @@ __global__ void kernel_reduction_op(float *out, TensorFormat *out_format, float*
         // printf(">idx=%lu, out_idx[%d]=%lu ordinal=%lu, \n", idx, i, out_idx[i], ordinal);
         ordinal = ordinal / out_format->shape[i];
     }
-    float ans = 0.f;
+    float ans = Op::init();
     
     size_t reduction_size = 1;
     size_t reduction_dims[MAX_DIM];
@@ -48,11 +114,9 @@ __global__ void kernel_reduction_op(float *out, TensorFormat *out_format, float*
             in_ordinal += out_idx[j] * in_format->strides[j] / sizeof(float);
             // printf("  idx=%d out_idx[%lu]=%lu, strides[%lu]=%lu --> %lu\n", idx, j, out_idx[j], j, in_format->strides[j], in_ordinal);
         }
-        ans = ans + in[in_ordinal];
+        ans = Op::apply(ans, in[in_ordinal]);
     }
-    if(mode == ReductionMode::MEAN) {
-        ans = ans / reduction_size;
-    }
+    ans = Op::post_process(ans, reduction_size);
     out[idx] = ans;
 }
 
@@ -119,7 +183,23 @@ shared_ptr<TensorStorage> reduction(const ReductionMode mode, shared_ptr<TensorS
 
     int block_size = 128;
     int n_block = (output_size + block_size - 1) / block_size;
-    kernel_reduction_op<<<n_block, block_size>>>(res, out_format.get(), input->data(), in_format.get(), mode);
+    switch(mode) {
+    case ReductionMode::SUM:
+        kernel_reduction_op<SumOp><<<n_block, block_size>>>(res, out_format.get(), input->data(), in_format.get());
+        break;
+    case ReductionMode::MEAN:
+        kernel_reduction_op<MeanOp><<<n_block, block_size>>>(res, out_format.get(), input->data(), in_format.get());
+        break;
+    case ReductionMode::MIN:
+        kernel_reduction_op<MinOp><<<n_block, block_size>>>(res, out_format.get(), input->data(), in_format.get());
+        break;
+    case ReductionMode::MAX:
+        kernel_reduction_op<MaxOp><<<n_block, block_size>>>(res, out_format.get(), input->data(), in_format.get());
+        break;
+    default:
+        break;
+    }
+
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
         printf("error\n");
@@ -150,7 +230,8 @@ shared_ptr<TensorStorage> reduction(const ReductionMode mode, shared_ptr<TensorS
 Tensor reduction(const ReductionMode mode, Tensor &input, const vector<size_t> &axis, const bool keep_dim) {
     Tensor res_tensor(reduction(mode, input.storage(), axis, keep_dim));
     // fprintf(stderr, "setting tensor %zu\n", res_tensor.m_id);
-    if(input.need_grad()) {
+    // TODO: add backward for reduce min/max
+    if(input.need_grad() && (mode == ReductionMode::MEAN || mode == ReductionMode::SUM)) {
         shared_ptr<GraphNode> out_node = res_tensor.graph_node();
         shared_ptr<GraphNode> input_node = input.graph_node();
 
@@ -180,8 +261,18 @@ Tensor reduce_mean(Tensor &input, const vector<size_t> &axis, const bool keep_di
     return reduction(ReductionMode::MEAN, input, axis, keep_dim);
 }
 
-namespace intl {
 
+Tensor reduce_min(Tensor &input, const vector<size_t> &axis, const bool keep_dim) {
+    return reduction(ReductionMode::MIN, input, axis, keep_dim);
+}
+
+
+Tensor reduce_max(Tensor &input, const vector<size_t> &axis, const bool keep_dim) {
+    return reduction(ReductionMode::MAX, input, axis, keep_dim);
+}
+
+
+namespace intl {
 
 shared_ptr<TensorStorage> reduce_sum(shared_ptr<TensorStorage> input, const vector<size_t> &axis, const bool keep_dim) {
     return reduction(ReductionMode::SUM, input, axis, keep_dim);
@@ -191,5 +282,12 @@ shared_ptr<TensorStorage> reduce_mean(shared_ptr<TensorStorage> input, const vec
     return reduction(ReductionMode::MEAN, input, axis, keep_dim);
 }
 
+shared_ptr<TensorStorage> reduce_max(shared_ptr<TensorStorage> input, const vector<size_t> &axis, const bool keep_dim) {
+    return reduction(ReductionMode::MAX, input, axis, keep_dim);
+}
+
+shared_ptr<TensorStorage> reduce_min(shared_ptr<TensorStorage> input, const vector<size_t> &axis, const bool keep_dim) {
+    return reduction(ReductionMode::MIN, input, axis, keep_dim);
+}
 }
 }

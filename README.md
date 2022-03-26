@@ -51,6 +51,7 @@ python3 setup.py develop
 - [X] 自动 broadcast / reduction
 - [X] Conv
 - [X] BN
+- [X] min / max (forward)
 - [ ] argmax/argmin
 - [ ] indexing
 - [ ] cumsum

@@ -41,6 +41,10 @@ PYBIND11_MODULE(_tinydl, m) {
             py::arg("input"), py::arg("axis"), py::arg("keep_dim")=false);
     m.def("op_reduce_mean", &opr::reduce_mean,
             py::arg("input"), py::arg("axis"), py::arg("keep_dim")=false);
+    m.def("op_reduce_min", &opr::reduce_min,
+            py::arg("input"), py::arg("axis"), py::arg("keep_dim")=false);
+    m.def("op_reduce_max", &opr::reduce_max,
+            py::arg("input"), py::arg("axis"), py::arg("keep_dim")=false);
 
     py::class_ <Tensor, shared_ptr<Tensor>>(m, "Tensor")
         .def(py::init<py::array_t<float> &>())

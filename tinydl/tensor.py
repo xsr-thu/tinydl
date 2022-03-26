@@ -32,6 +32,12 @@ class Tensor:
     def mean(self, axis, keep_dim=False):
         return opr.mean(self, axis, keep_dim)
 
+    def min(self, axis, keep_dim=False):
+        return opr.min(self, axis, keep_dim)
+
+    def max(self, axis, keep_dim=False):
+        return opr.max(self, axis, keep_dim)
+
     def log(self):
         return opr.log(self)
 
