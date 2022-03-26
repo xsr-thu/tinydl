@@ -5,6 +5,7 @@ from tinydl import nn
 import tinydl
 import numpy as np
 import time
+import pickle
 
 
 class TinydlNet(nn.Module):
@@ -26,7 +27,7 @@ def loss_fn(pred, y):
     p = pred - m
     p = p.exp()
     s = p.sum(1, keep_dim=True)
-    p = p / s
+    p = p / s + tinydl.Tensor([[1e-45]])
     neg = tinydl.Tensor([[-1]])
     idx = tinydl.Tensor(np.arange(10)).view(1, 10)
     y = y.view(y.shape()[0], 1)
@@ -115,6 +116,11 @@ def main():
             opt.set_lr(1e-4)
         train(train_dataloader, model_tinydl, loss_fn, opt, epoch)
         test(test_dataloader, model_tinydl, loss_fn, epoch)
+
+        state = model_tinydl.state_dict()
+        with open("ckpt_mlp.pkl", "wb") as f:
+            pickle.dump(state, f)
+
 
 if __name__ == "__main__":
     main()
