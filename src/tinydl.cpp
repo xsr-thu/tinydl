@@ -7,6 +7,7 @@
 #include "opr/matmul.h"
 #include "opr/trans_layout.h"
 #include "opr/cudnn/conv.h"
+#include "opr/cudnn/batchnorm.h"
 
 
 PYBIND11_MODULE(_tinydl, m) {
@@ -31,6 +32,7 @@ PYBIND11_MODULE(_tinydl, m) {
     m.def("op_matmul", &opr::matmul);
 
     m.def("op_conv2d", &opr::conv2d);
+    m.def("op_batchnorm", &opr::batchnorm);
 
     m.def("op_view", &opr::view,
             py::arg("tensor"), py::arg("axis"));

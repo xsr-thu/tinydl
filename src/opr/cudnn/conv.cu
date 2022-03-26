@@ -6,14 +6,7 @@
 #include "tensor.h"
 #include "../opr_utils.h"
 #include "../../autograd.h"
-
-
-void CUDNN_CHECK(cudnnStatus_t s) {
-    if(s != CUDNN_STATUS_SUCCESS) {
-        fprintf(stderr, "CUDNN: %s\n", cudnnGetErrorString(s));
-        assert(0);
-    }
-}
+#include "common.h"
 
 
 shared_ptr<TensorStorage> conv2d_forward(shared_ptr<TensorStorage> data, shared_ptr<TensorStorage> weight, size_t padding, size_t stride) {

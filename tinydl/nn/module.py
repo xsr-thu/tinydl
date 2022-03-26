@@ -3,14 +3,15 @@ from collections import OrderedDict
 import numpy as np
 from ..import matmul
 from ..import conv2d
+from ..import batchnorm
 from .. import _tinydl
 from . import init
 
 
 class Parameter(Tensor):
-    def __init__(self, *arg, **kwarg):
+    def __init__(self, *arg, require_grad=True, **kwarg):
         super().__init__(*arg, **kwarg)
-        self.require_grad_(True)
+        self.require_grad_(require_grad)
 
     def set_value(self, data):
         require_grad = self.data.has_grad()
@@ -34,6 +35,17 @@ class Module:
     def __init__(self):
         self._parameters = OrderedDict()
         self._modules = OrderedDict()
+        self._is_train = True
+
+    def train(self):
+        self._is_train = True
+        for m in self.children():
+            m.train()
+
+    def eval(self):
+        self._is_train = False
+        for m in self.children():
+            m.eval()
 
     def parameters(self):
         parameters = list(self._parameters.values())
@@ -132,3 +144,22 @@ class Conv2D(Module):
 
     def init(self):
         init.kaiming_uniform_(self.weight, self.bias)
+
+
+class BatchNorm(Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.channels = channels
+        self.weight = Parameter(
+                np.ones((1, channels, 1, 1)).astype(np.float32)
+                )
+        self.bias = Parameter(np.zeros((1, channels, 1, 1), dtype=np.float32))
+        self.running_mean = Parameter(
+                np.zeros((1, channels, 1, 1), dtype=np.float32),
+                require_grad=False)
+        self.running_var = Parameter(
+                np.zeros((1, channels, 1, 1), dtype=np.float32),
+                require_grad=False)
+
+    def forward(self, data):
+        return batchnorm(data, self.weight, self.bias, self.running_mean, self.running_var, self._is_train)

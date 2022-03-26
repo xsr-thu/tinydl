@@ -1,5 +1,5 @@
 file(GLOB OPR_SRCS "*.cu")
-file(GLOB OPR_CUDNN_SRCS "cudnn/*.cu")
+file(GLOB OPR_CUDNN_SRCS "cudnn/*.cu" "cudnn/*.cpp")
 
 target_sources(${LIBRARY_NAME} PRIVATE ${OPR_SRCS} ${OPR_CUDNN_SRCS})
 target_include_directories(${LIBRARY_NAME}

@@ -76,3 +76,9 @@ def view(x, shape):
 
 def conv2d(x, w, padding, stride):
     return _as_tensor(_tinydl.op_conv2d(x.data, w.data, padding, stride))
+
+def batchnorm(x, weight, bias, running_mean, running_var, is_train):
+    return _as_tensor(_tinydl.op_batchnorm(
+        x.data, weight.data, bias.data,
+        running_mean.data, running_var.data,
+        is_train))

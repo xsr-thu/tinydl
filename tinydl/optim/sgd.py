@@ -12,6 +12,8 @@ class SGD:
 
     def step(self):
         for n, p in self.named_parameters.items():
+            if not p.has_grad():
+                continue
             p.set_value(p - self.lr * p.grad())
 
     def set_lr(self, lr):
