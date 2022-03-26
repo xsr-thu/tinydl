@@ -154,7 +154,7 @@ struct BatchNormOpBackwarFunc: BackwardFunc {
 
         m_input_nodes[0]->acc_grad(grads[0]);
         m_input_nodes[1]->acc_grad(grads[1]);
-        m_input_nodes[3]->acc_grad(grads[2]);
+        m_input_nodes[2]->acc_grad(grads[2]);
     }
 };
 

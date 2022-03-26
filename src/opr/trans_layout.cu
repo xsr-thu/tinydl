@@ -50,7 +50,7 @@ Tensor view(Tensor& x, std::vector<size_t> &new_shape) {
     Tensor new_tensor = Tensor(new_storage);
 
     if(x.m_require_grad || x.m_need_grad) {
-        printf("set backward fun for view\n");
+        // printf("set backward fun for view\n");
         shared_ptr<GraphNode> out_node = new_tensor.graph_node();
         shared_ptr<GraphNode> x_node = x.graph_node();
         shared_ptr<BackwardFunc> func = ViewBackwardFunc::make(x_node, old_shape, old_strides);

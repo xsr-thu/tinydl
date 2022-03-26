@@ -20,7 +20,7 @@ shared_ptr<TensorStorage> conv2d_forward(shared_ptr<TensorStorage> data, shared_
     output_shape[1] = weight_shape[0];
     size_t kh = weight_shape[2];
     size_t kw = weight_shape[3];
-    size_t pad_h = 1, pad_w = 1;
+    size_t pad_h = padding, pad_w = padding;
     size_t stride_h = stride, stride_w = stride;
     output_shape[2] = (data_shape[2] + pad_h + pad_h - kh + 1) / stride_h;
     output_shape[3] = (data_shape[2] + pad_w + pad_w - kw + 1) / stride_w;
