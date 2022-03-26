@@ -6,20 +6,51 @@ import tinydl
 import numpy as np
 
 
+class ResBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, strides=1):
+        super().__init__()
+        self.conv1 = nn.Conv2D(in_channels, out_channels // 2, kernel_size=3, padding=1, stride=strides)
+        self.bn1 = nn.BatchNorm(out_channels//2)
+        self.conv2 = nn.Conv2D(out_channels//2, out_channels, kernel_size=3, padding=1, stride=1)
+        self.bn2 = nn.BatchNorm(out_channels)
+        if strides == 2:
+            self.shortcut = nn.Conv2D(in_channels, out_channels, kernel_size=1, padding=0, stride=2)
+        else:
+            self.shortcut = None
+
+    def forward(self, data):
+        x = tinydl.relu(self.bn1(self.conv1(data)))
+        x = tinydl.relu(self.bn2(self.conv2(x)))
+        if self.shortcut is not None:
+            data = self.shortcut(data)
+        return data + x
+        
+
 class TinydlNet(nn.Module):
     def __init__(self):
         super().__init__()
-        # 1x28x28
-        self.conv1 = nn.Conv2D(1, 16, kernel_size=3, padding=1, stride=2)
-        self.bn = nn.BatchNorm(16)
+        # 1*28*28
+        self.stage1_block1 = ResBlock(1, 16, 2)
+        self.stage1_block2 = ResBlock(16, 16, 1)
+        self.stage1_block3 = ResBlock(16, 16, 1)
+        
         # 16*14*14
-        self.conv2 = nn.Conv2D(16, 32, kernel_size=3, padding=1, stride=2)
+        self.stage2_block1 = ResBlock(16, 32, 2)
+        self.stage2_block2 = ResBlock(32, 32, 1)
+        self.stage2_block3 = ResBlock(32, 32, 1)
+        
         # 32*7*7
         self.fc = nn.Linear(32*7*7, 10)
 
     def forward(self, x):
-        x = tinydl.relu(self.bn(self.conv1(x)))
-        x = tinydl.relu(self.conv2(x))
+        x = self.stage1_block1(x)
+        x = self.stage1_block2(x)
+        x = self.stage1_block3(x)
+        
+        x = self.stage2_block1(x)
+        x = self.stage2_block2(x)
+        x = self.stage2_block3(x)
+        
         x = x.view(x.shape()[0], 32*7*7)
         x = self.fc(x)
         return x
@@ -61,7 +92,7 @@ def train(dataloader, model, loss_fn, optimizer, epoch):
         optimizer.step()
         optimizer.zero_grad()
 
-        if batch % 50 == 0:
+        if batch % 10 == 0:
             loss, current = loss.numpy().item(), batch * X.shape()[0]
             print(f"[epoch: {epoch}] loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 

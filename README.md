@@ -49,8 +49,8 @@ python3 setup.py develop
 - [X] reduce sum
 - [X] reduce mean
 - [X] 自动 broadcast / reduction
-- [ ] Conv
-- [ ] BN
+- [X] Conv
+- [X] BN
 - [ ] argmax/argmin
 - [ ] indexing
 - [ ] cumsum
