@@ -74,10 +74,10 @@ struct ReductionBackwardFunc: BackwardFunc {
     }
 
     void backward_func(shared_ptr<GraphNode> out_node) override {
-        shared_ptr<TensorStorage> out_grad = out_node->m_grad_storage;
+        shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
 
         if (m_mode == ReductionMode::MEAN) {
-            out_grad = opr::intl::mul(out_grad, Tensor::get_const(1.0/(m_reduction_size)).m_storage);
+            out_grad = opr::intl::mul(out_grad, Tensor::get_const(1.0/(m_reduction_size)).storage());
         }
 
         if(!m_keep_dim) {
@@ -98,7 +98,7 @@ struct ReductionBackwardFunc: BackwardFunc {
 };
 
 shared_ptr<TensorStorage> reduction(const ReductionMode mode, shared_ptr<TensorStorage> input, const vector<size_t> &axis, const bool keep_dim) {
-    vector<size_t> output_shape = input->m_shape;
+    vector<size_t> output_shape = input->shape();
     vector<size_t> output_strides(output_shape.size());
     size_t output_size = 1;
     bool keep[MAX_DIM]={};
@@ -150,13 +150,13 @@ shared_ptr<TensorStorage> reduction(const ReductionMode mode, shared_ptr<TensorS
 
 
 Tensor reduction(const ReductionMode mode, Tensor &input, const vector<size_t> &axis, const bool keep_dim) {
-    Tensor res_tensor(reduction(mode, input.m_storage, axis, keep_dim));
+    Tensor res_tensor(reduction(mode, input.storage(), axis, keep_dim));
     // fprintf(stderr, "setting tensor %zu\n", res_tensor.m_id);
-    if(input.m_require_grad || input.m_need_grad) {
+    if(input.need_grad()) {
         shared_ptr<GraphNode> out_node = res_tensor.graph_node();
         shared_ptr<GraphNode> input_node = input.graph_node();
 
-        vector<size_t> output_shape = input.m_storage->m_shape;
+        vector<size_t> output_shape = input.storage()->shape();
         size_t reduction_size = 1;
         for(size_t i =0;i<axis.size(); i++) {
             reduction_size *= output_shape[axis[i]];
@@ -166,8 +166,6 @@ Tensor reduction(const ReductionMode mode, Tensor &input, const vector<size_t> &
         shared_ptr<BackwardFunc> func = ReductionBackwardFunc::make(mode, reduction_size, input_node, output_shape, keep_dim);
 
         out_node->set_backward_func(func);
-        out_node->m_need_grad = true;
-        res_tensor.m_need_grad = true;
         // fprintf(stderr, "setting tensor %zu -- add backward\n", res_tensor.m_id);
     }
     return res_tensor;

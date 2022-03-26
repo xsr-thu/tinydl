@@ -9,12 +9,12 @@ from . import init
 
 
 class Parameter(Tensor):
-    def __init__(self, *arg, require_grad=True, **kwarg):
+    def __init__(self, *arg, requires_grad=True, **kwarg):
         super().__init__(*arg, **kwarg)
-        self.require_grad_(require_grad)
+        self.requires_grad_(requires_grad)
 
     def set_value(self, data):
-        require_grad = self.data.has_grad()
+        requires_grad = self.data.requires_grad
         # print("set_value to", data)
         # from IPython import embed
         # embed()
@@ -27,7 +27,7 @@ class Parameter(Tensor):
             assert isinstance(data, Tensor)
             # print("set_value", self.shape(), data.shape())
             self.data.set_value(data.data)
-        self.data.require_grad_(require_grad)
+        self.data.requires_grad_(requires_grad)
 
 
 
@@ -156,10 +156,10 @@ class BatchNorm(Module):
         self.bias = Parameter(np.zeros((1, channels, 1, 1), dtype=np.float32))
         self.running_mean = Parameter(
                 np.zeros((1, channels, 1, 1), dtype=np.float32),
-                require_grad=False)
+                requires_grad=False)
         self.running_var = Parameter(
                 np.zeros((1, channels, 1, 1), dtype=np.float32),
-                require_grad=False)
+                requires_grad=False)
 
     def forward(self, data):
         return batchnorm(data, self.weight, self.bias, self.running_mean, self.running_var, self._is_train)

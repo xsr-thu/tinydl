@@ -56,8 +56,8 @@ struct TensorFormat{
     static TensorFormat* make_cuda_tensor_format(Tensor tensor) {
         TensorFormat format{tensor.size(), tensor.dim()};
         for(size_t i=0; i<tensor.dim(); i++) {
-            format.shape[i] = tensor.m_storage->m_shape[i];
-            format.strides[i] = tensor.m_storage->m_strides[i];
+            format.shape[i] = tensor.shape()[i];
+            format.strides[i] = tensor.strides()[i];
         }
         TensorFormat *dev_format;
         cudaMalloc(&dev_format, sizeof(TensorFormat));
@@ -65,7 +65,7 @@ struct TensorFormat{
         return dev_format;
     }
 
-    static TensorFormat* make_cuda_tensor_format(vector<size_t> &shape, vector<size_t> &strides) {
+    static TensorFormat* make_cuda_tensor_format(const vector<size_t> &shape, const vector<size_t> &strides) {
         size_t size = 1;
         cudaError_t err;
         for(size_t s: shape) {

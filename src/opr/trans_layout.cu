@@ -8,7 +8,9 @@ struct ViewBackwardFunc: BackwardFunc {
     vector<size_t> m_old_shape;
     vector<size_t> m_old_strides;
 
-    static std::shared_ptr<BackwardFunc> make(shared_ptr<GraphNode> x, std::vector<size_t> &shape, std::vector<size_t> &strides){
+    static std::shared_ptr<BackwardFunc> make(shared_ptr<GraphNode> x,
+            const std::vector<size_t> &shape,
+            const std::vector<size_t> &strides){
         shared_ptr<ViewBackwardFunc> func = make_shared<ViewBackwardFunc>();
         func->m_input_nodes.push_back(x);
         func->m_old_shape = shape;
@@ -17,7 +19,7 @@ struct ViewBackwardFunc: BackwardFunc {
     }
 
     void backward_func(shared_ptr<GraphNode> out_node) override {
-        shared_ptr<TensorStorage> out_grad = out_node->m_grad_storage;
+        shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
         shared_ptr<TensorStorage> new_storage = make_shared<TensorStorage>(
                 out_grad, m_old_shape, m_old_strides);
         m_input_nodes[0]->acc_grad(new_storage);
@@ -27,9 +29,9 @@ struct ViewBackwardFunc: BackwardFunc {
 namespace opr {
 
 Tensor view(Tensor& x, std::vector<size_t> &new_shape) {
-    std::shared_ptr<TensorStorage> old_storage = x.m_storage;
-    std::vector<size_t> &old_strides = old_storage->m_strides;
-    std::vector<size_t> &old_shape = old_storage->m_shape;
+    std::shared_ptr<TensorStorage> old_storage = x.storage();
+    const std::vector<size_t> &old_strides = old_storage->strides();
+    const std::vector<size_t> &old_shape = old_storage->shape();
 
     size_t new_size = 1;
     std::vector<size_t> new_strides(new_shape.size());
@@ -49,15 +51,13 @@ Tensor view(Tensor& x, std::vector<size_t> &new_shape) {
 
     Tensor new_tensor = Tensor(new_storage);
 
-    if(x.m_require_grad || x.m_need_grad) {
+    if(x.need_grad()) {
         // printf("set backward fun for view\n");
         shared_ptr<GraphNode> out_node = new_tensor.graph_node();
         shared_ptr<GraphNode> x_node = x.graph_node();
         shared_ptr<BackwardFunc> func = ViewBackwardFunc::make(x_node, old_shape, old_strides);
 
         out_node->set_backward_func(func);
-        out_node->m_need_grad = true;
-        new_tensor.m_need_grad = true;
     }
     return new_tensor;
 }

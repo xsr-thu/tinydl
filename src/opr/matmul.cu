@@ -56,10 +56,10 @@ void print_shape(vector<size_t> &data) {
 
 
 shared_ptr<TensorStorage> matmul_op(const shared_ptr<TensorStorage> x, bool x_transpose, const shared_ptr<TensorStorage> &y, bool y_transpose) {
-    vector<size_t> x_shape = x->m_shape;
-    vector<size_t> y_shape = y->m_shape;
-    vector<size_t> x_strides = x->m_strides;
-    vector<size_t> y_strides = y->m_strides;
+    vector<size_t> x_shape = x->shape();
+    vector<size_t> y_shape = y->shape();
+    vector<size_t> x_strides = x->strides();
+    vector<size_t> y_strides = y->strides();
 
     // printf("matmul_op data 1 shape: ");
     // print_shape(x_shape);
@@ -154,7 +154,7 @@ struct MatmulOpBackwarFunc: BackwardFunc {
     }
 
     void backward_func(shared_ptr<GraphNode> out_node) override {
-        shared_ptr<TensorStorage> out_grad = out_node->m_grad_storage;
+        shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
         shared_ptr<TensorStorage> x1 = m_saved_tensors[0];
         shared_ptr<TensorStorage> x2 = m_saved_tensors[1];
         
@@ -168,19 +168,17 @@ struct MatmulOpBackwarFunc: BackwardFunc {
 
 
 Tensor matmul_op(Tensor &x, Tensor &y) {
-    Tensor res = Tensor(matmul_op(x.m_storage, y.m_storage));
-    if(x.m_need_grad || y.m_need_grad || x.m_require_grad || y.m_require_grad) {
+    Tensor res = Tensor(matmul_op(x.storage(), y.storage()));
+    if(x.need_grad() || y.need_grad()) {
         shared_ptr<GraphNode> x_node = x.graph_node();
         shared_ptr<GraphNode> y_node = y.graph_node();
         shared_ptr<GraphNode> out_node = res.graph_node();
         shared_ptr<BackwardFunc> func = MatmulOpBackwarFunc::make(x_node, y_node);
     
-        func->m_saved_tensors.push_back(x.m_storage);
-        func->m_saved_tensors.push_back(y.m_storage);
+        func->m_saved_tensors.push_back(x.storage());
+        func->m_saved_tensors.push_back(y.storage());
         
         out_node->set_backward_func(func);
-        out_node->m_need_grad = true;
-        res.m_need_grad = true;
     }
     return res;
 }

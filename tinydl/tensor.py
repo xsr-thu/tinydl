@@ -44,11 +44,12 @@ class Tensor:
     def view(self, *axis):
         return opr.view(self, axis)
 
-    def require_grad_(self, r):
-        self.data.require_grad_(r)
+    def requires_grad_(self, r):
+        self.data.requires_grad_(r)
 
-    def has_grad(self):
-        return self.data.has_grad()
+    @property
+    def requires_grad(self):
+        return self.data.requires_grad
 
     def zero_grad(self):
         return self.data.zero_grad()
@@ -71,7 +72,6 @@ class Tensor:
 
     def __repr__(self):
         return "Tensor({})".format(self.numpy().__str__())
-
 
     def item(self):
         pass

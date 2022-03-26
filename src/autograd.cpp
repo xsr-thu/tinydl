@@ -4,15 +4,15 @@
 
 void GraphNode::acc_grad(shared_ptr<TensorStorage> grad) {
     // FIXME: broadcast
-    if(!m_require_grad && !m_need_grad)
+    if(!need_grad())
         return;
     if(!m_grad_storage) {
         bool layout_is_same = true;
-        if(m_shape.size() == grad->m_shape.size()) {
+        if(m_shape.size() == grad->dim()) {
             for(int i=0; i < m_shape.size(); i++) {
                 // TODO: fix non-contiougous layout
                 // add Layout abstract
-                if(m_shape[i] != grad->m_shape[i]) {
+                if(m_shape[i] != grad->shape()[i]) {
                     layout_is_same = false;
                     break;
                 }
@@ -33,8 +33,13 @@ void GraphNode::acc_grad(shared_ptr<TensorStorage> grad) {
 
 
 void GraphNode::release() {
-    if(!m_require_grad)
+    if(!requires_grad())
         m_grad_storage.reset();
+}
+
+
+size_t GraphNode::inputs_number() {
+    return m_backward_func ? m_backward_func->m_input_nodes.size(): 0;
 }
 
 
@@ -48,13 +53,13 @@ void graph_dfs(unordered_set<NodePtr> &visited, unordered_map<NodePtr, unordered
     // printf("graph_dfs %zu\n", node->m_id);
     visited.insert(node);
 
-    if(!node->m_require_grad && !node->m_need_grad)
+    if(!node->need_grad())
         return;
-    if(!node->m_backward_func || !node->m_backward_func->m_input_nodes.size()) {
+    if(!node->inputs_number()) {
         leafs.push_back(node);
         return;
     }
-    for(auto& n: node->m_backward_func->m_input_nodes) {
+    for(auto& n: node->backward_func()->m_input_nodes) {
         in2out[n].insert(node);
         graph_dfs(visited, in2out, leafs, n);
     }
@@ -112,6 +117,6 @@ void backprop(shared_ptr<GraphNode> output_node) {
 
     for(auto& n: topo_seq) {
         // printf("-- backward -- %zu\n", n->m_id);
-        n->m_backward_func->operator()(n);
+        n->backward_func()->operator()(n);
     }
 }

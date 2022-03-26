@@ -166,7 +166,7 @@ shared_ptr<TensorStorage> binary_op(BinaryOpMode mode, shared_ptr<TensorStorage>
     same_layout = same_layout && (x->size() == y->size());
     same_layout = same_layout && (x->dim() == y->dim());
     for(size_t i=0; i<x->dim(); i++)
-        same_layout = same_layout && (x->m_shape[i] == y->m_shape[i]) && (x->m_strides[i] == y->m_strides[i]);
+        same_layout = same_layout && (x->shape()[i] == y->shape()[i]) && (x->strides()[i] == y->strides()[i]);
 
     float *res;
     if(same_layout) {
@@ -179,7 +179,7 @@ shared_ptr<TensorStorage> binary_op(BinaryOpMode mode, shared_ptr<TensorStorage>
         if (err != cudaSuccess) {
             printf("cuda error %s\n", cudaGetErrorString(err));
         }
-        return make_shared<TensorStorage>(res, x->size(), x->m_shape, x->m_strides);
+        return make_shared<TensorStorage>(res, x->size(), x->shape(), x->strides());
     } else {
         vector<size_t> out_shape;
         vector<size_t> out_strides;
@@ -191,13 +191,13 @@ shared_ptr<TensorStorage> binary_op(BinaryOpMode mode, shared_ptr<TensorStorage>
             out_strides.resize(x->dim());
             size_t s = 1;
             for(int i=x->dim() - 1;i >= 0; i--) {
-                out_shape[i] = max(x->m_shape[i], y->m_shape[i]);
+                out_shape[i] = max(x->shape()[i], y->shape()[i]);
                 out_strides[i] = s * sizeof(float);
                 s *= out_shape[i];
             }
             res_size = s;
-            x_format = TensorFormat::make_cuda_tensor_format(x->m_shape, x->m_strides);
-            y_format = TensorFormat::make_cuda_tensor_format(y->m_shape, y->m_strides);
+            x_format = TensorFormat::make_cuda_tensor_format(x->shape(), x->strides());
+            y_format = TensorFormat::make_cuda_tensor_format(y->shape(), y->strides());
             out_format = TensorFormat::make_cuda_tensor_format(out_shape, out_strides);
         } else if(x->dim() == 1 && x->size() ==1) {
             vector<size_t> x_shape;
@@ -208,7 +208,7 @@ shared_ptr<TensorStorage> binary_op(BinaryOpMode mode, shared_ptr<TensorStorage>
             out_strides.resize(y->dim());
             size_t s = 1;
             for(int i=y->dim() - 1;i >= 0; i--) {
-                out_shape[i] = y->m_shape[i];
+                out_shape[i] = y->shape()[i];
                 out_strides[i] = s * sizeof(float);
                 s *= out_shape[i];
                 x_shape[i] = 1;
@@ -216,7 +216,7 @@ shared_ptr<TensorStorage> binary_op(BinaryOpMode mode, shared_ptr<TensorStorage>
             }
             res_size = s;
             x_format = TensorFormat::make_cuda_tensor_format(x_shape, x_strides);
-            y_format = TensorFormat::make_cuda_tensor_format(y->m_shape, y->m_strides);
+            y_format = TensorFormat::make_cuda_tensor_format(y->shape(), y->strides());
             out_format = TensorFormat::make_cuda_tensor_format(out_shape, out_strides);
         } else if(y->dim() == 1 && y->size() == 1) {
             vector<size_t> y_shape;
@@ -227,14 +227,14 @@ shared_ptr<TensorStorage> binary_op(BinaryOpMode mode, shared_ptr<TensorStorage>
             out_strides.resize(x->dim());
             size_t s = 1;
             for(int i=x->dim() - 1;i >= 0; i--) {
-                out_shape[i] = x->m_shape[i];
+                out_shape[i] = x->shape()[i];
                 out_strides[i] = s * sizeof(float);
                 s *= out_shape[i];
                 y_shape[i] = 1;
                 y_strides[i] = 1;
             }
             res_size = s;
-            x_format = TensorFormat::make_cuda_tensor_format(x->m_shape, x->m_strides);
+            x_format = TensorFormat::make_cuda_tensor_format(x->shape(), x->strides());
             y_format = TensorFormat::make_cuda_tensor_format(y_shape, y_strides);
             out_format = TensorFormat::make_cuda_tensor_format(out_shape, out_strides);
         } else {
@@ -271,7 +271,7 @@ shared_ptr<TensorStorage> unary_op(UnaryOpMode mode, shared_ptr<TensorStorage> x
     if (err != cudaSuccess) {
         printf("cuda error %s\n", cudaGetErrorString(err));
     }
-    return make_shared<TensorStorage>(res, x->size(), x->m_shape, x->m_strides);
+    return make_shared<TensorStorage>(res, x->size(), x->shape(), x->strides());
 }
 
 
@@ -285,7 +285,7 @@ shared_ptr<TensorStorage> copy_op(shared_ptr<TensorStorage> x) {
     if (err != cudaSuccess) {
         printf("cuda error %s\n", cudaGetErrorString(err));
     }
-    return make_shared<TensorStorage>(res, x->size(), x->m_shape, x->m_strides);
+    return make_shared<TensorStorage>(res, x->size(), x->shape(), x->strides());
 }
 
 
@@ -360,8 +360,9 @@ struct BinaryOpBackwarFunc: BackwardFunc {
     BinaryOpMode m_mode;
     vector<size_t> m_x_shape;
     vector<size_t> m_y_shape;
-    static std::shared_ptr<BackwardFunc> make(shared_ptr<GraphNode> x, vector<size_t> &x_shape,
-            shared_ptr<GraphNode> y, vector<size_t> &y_shape,
+    static std::shared_ptr<BackwardFunc> make(
+            shared_ptr<GraphNode> x, const vector<size_t> &x_shape,
+            shared_ptr<GraphNode> y, const vector<size_t> &y_shape,
             BinaryOpMode mode){
         shared_ptr<BackwardFunc> func = make_shared<BinaryOpBackwarFunc>(mode, x_shape, y_shape);
         func->m_input_nodes.push_back(x);
@@ -373,18 +374,18 @@ struct BinaryOpBackwarFunc: BackwardFunc {
         // TODO: check shape
         vector<size_t> x_reduce_dims;
         vector<size_t> y_reduce_dims;
-        assert(out_node->m_grad_storage->dim() == m_x_shape.size());
-        assert(out_node->m_grad_storage->dim() == m_y_shape.size());
+        assert(out_node->dim() == m_x_shape.size());
+        assert(out_node->dim() == m_y_shape.size());
 
         // fprintf(stderr, "=========================\n");
-        for(int i=0; i<out_node->m_grad_storage->dim(); i++) {
-            if(out_node->m_grad_storage->m_shape[i] != m_x_shape[i]) {
-                // fprintf(stderr, "dim %d %zu %zu\n", i, out_node->m_grad_storage->m_shape[i], m_x_shape[i]);
+        for(int i=0; i<out_node->dim(); i++) {
+            if(out_node->shape()[i] != m_x_shape[i]) {
+                // fprintf(stderr, "dim %d %zu %zu\n", i, out_node->shape()[i], m_x_shape[i]);
                 assert(m_x_shape[i] == 1);
                 x_reduce_dims.push_back(i);
             }
-            if(out_node->m_grad_storage->m_shape[i] != m_y_shape[i]) {
-                // fprintf(stderr, "dim %d %zu %zu\n", i, out_node->m_grad_storage->m_shape[i], m_y_shape[i]);
+            if(out_node->shape()[i] != m_y_shape[i]) {
+                // fprintf(stderr, "dim %d %zu %zu\n", i, out_node->shape()[i], m_y_shape[i]);
                 assert(m_y_shape[i] == 1);
                 y_reduce_dims.push_back(i);
             }
@@ -397,23 +398,23 @@ struct BinaryOpBackwarFunc: BackwardFunc {
 
         switch(m_mode) {
             case BinaryOpMode::ADD:
-                // m_input_nodes[0]->acc_grad(out_node->m_grad_storage);
-                // m_input_nodes[1]->acc_grad(out_node->m_grad_storage);
+                // m_input_nodes[0]->acc_grad(out_node->grad_storage());
+                // m_input_nodes[1]->acc_grad(out_node->grad_storage());
                 // fprintf(stderr, "   add\n");
                 if(x_reduce_dims.size()) {
                     // fprintf(stderr, " backprop with reduction x n=%zu first=%zu\n", x_reduce_dims.size(), x_reduce_dims[0]);
                     m_input_nodes[0]->acc_grad(
-                            opr::intl::reduce_sum(out_node->m_grad_storage, x_reduce_dims, true));
+                            opr::intl::reduce_sum(out_node->grad_storage(), x_reduce_dims, true));
                 } else {
-                    m_input_nodes[0]->acc_grad(out_node->m_grad_storage);
+                    m_input_nodes[0]->acc_grad(out_node->grad_storage());
                 }
 
                 if(y_reduce_dims.size()) {
                     // fprintf(stderr, " backprop with reduction y n=%zu first=%zu\n", y_reduce_dims.size(), y_reduce_dims[0]);
                     m_input_nodes[1]->acc_grad(
-                            opr::intl::reduce_sum(out_node->m_grad_storage, y_reduce_dims, true));
+                            opr::intl::reduce_sum(out_node->grad_storage(), y_reduce_dims, true));
                 } else {
-                    m_input_nodes[1]->acc_grad(out_node->m_grad_storage);
+                    m_input_nodes[1]->acc_grad(out_node->grad_storage());
                 }
 
                 break;
@@ -422,20 +423,20 @@ struct BinaryOpBackwarFunc: BackwardFunc {
                 if(x_reduce_dims.size()) {
                     // fprintf(stderr, " backprop with reduction x n=%zu first=%zu\n", x_reduce_dims.size(), x_reduce_dims[0]);
                     m_input_nodes[0]->acc_grad(
-                            opr::intl::reduce_sum(out_node->m_grad_storage, x_reduce_dims, true));
+                            opr::intl::reduce_sum(out_node->grad_storage(), x_reduce_dims, true));
                 } else {
-                    m_input_nodes[0]->acc_grad(out_node->m_grad_storage);
+                    m_input_nodes[0]->acc_grad(out_node->grad_storage());
                 }
 
                 if(y_reduce_dims.size()) {
                     // fprintf(stderr, " backprop with reduction y n=%zu first=%zu\n", y_reduce_dims.size(), y_reduce_dims[0]);
                     m_input_nodes[1]->acc_grad(
                             opr::intl::reduce_sum(
-                                unary_op(UnaryOpMode::NEG, out_node->m_grad_storage),
+                                unary_op(UnaryOpMode::NEG, out_node->grad_storage()),
                                 y_reduce_dims, true));
                 } else {
                     m_input_nodes[1]->acc_grad(
-                            unary_op(UnaryOpMode::NEG, out_node->m_grad_storage));
+                            unary_op(UnaryOpMode::NEG, out_node->grad_storage()));
                 }
 
                 break;
@@ -446,12 +447,12 @@ struct BinaryOpBackwarFunc: BackwardFunc {
                     // fprintf(stderr, " backprop with reduction x n=%zu first=%zu\n", x_reduce_dims.size(), x_reduce_dims[0]);
                     m_input_nodes[0]->acc_grad(
                             opr::intl::reduce_sum(
-                                binary_op(BinaryOpMode::MUL, out_node->m_grad_storage, m_saved_tensors[1]),
+                                binary_op(BinaryOpMode::MUL, out_node->grad_storage(), m_saved_tensors[1]),
                                 x_reduce_dims, true));
                 } else {
                     m_input_nodes[0]->acc_grad(
                             binary_op(BinaryOpMode::MUL,
-                                out_node->m_grad_storage,
+                                out_node->grad_storage(),
                                 m_saved_tensors[1]));
                 }
 
@@ -459,12 +460,12 @@ struct BinaryOpBackwarFunc: BackwardFunc {
                     // fprintf(stderr, " backprop with reduction y n=%zu first=%zu\n", y_reduce_dims.size(), y_reduce_dims[0]);
                     m_input_nodes[1]->acc_grad(
                             opr::intl::reduce_sum(
-                                binary_op(BinaryOpMode::MUL, out_node->m_grad_storage, m_saved_tensors[0]),
+                                binary_op(BinaryOpMode::MUL, out_node->grad_storage(), m_saved_tensors[0]),
                                 y_reduce_dims, true));
                 } else {
                     m_input_nodes[1]->acc_grad(
                             binary_op(BinaryOpMode::MUL,
-                                out_node->m_grad_storage,
+                                out_node->grad_storage(),
                                 m_saved_tensors[0]));
                 }
                 break;
@@ -475,23 +476,23 @@ struct BinaryOpBackwarFunc: BackwardFunc {
                     // fprintf(stderr, " backprop with reduction x n=%zu first=%zu\n", x_reduce_dims.size(), x_reduce_dims[0]);
                     m_input_nodes[0]->acc_grad(
                             opr::intl::reduce_sum(
-                                div(out_node->m_grad_storage, m_saved_tensors[1]),
+                                div(out_node->grad_storage(), m_saved_tensors[1]),
                                 x_reduce_dims, true));
                 } else {
                     m_input_nodes[0]->acc_grad(
-                            div(out_node->m_grad_storage, m_saved_tensors[1]));
+                            div(out_node->grad_storage(), m_saved_tensors[1]));
                 }
 
                 if(y_reduce_dims.size()) {
                     // fprintf(stderr, " backprop with reduction y n=%zu first=%zu\n", y_reduce_dims.size(), y_reduce_dims[0]);
                     m_input_nodes[1]->acc_grad(
                             opr::intl::reduce_sum(
-                                neg(div(mul(out_node->m_grad_storage, m_saved_tensors[0]),
+                                neg(div(mul(out_node->grad_storage(), m_saved_tensors[0]),
                                         mul(m_saved_tensors[1], m_saved_tensors[1]))),
                                 y_reduce_dims, true));
                 } else {
                     m_input_nodes[1]->acc_grad(
-                            neg(div(mul(out_node->m_grad_storage, m_saved_tensors[0]),
+                            neg(div(mul(out_node->grad_storage(), m_saved_tensors[0]),
                                     mul(m_saved_tensors[1], m_saved_tensors[1]))));
                 }
 
@@ -504,30 +505,28 @@ struct BinaryOpBackwarFunc: BackwardFunc {
         // fprintf(stderr, "---------------\n");
     }
 
-    BinaryOpBackwarFunc(BinaryOpMode mode, vector<size_t> &x_shape, vector<size_t> &y_shape)
+    BinaryOpBackwarFunc(BinaryOpMode mode, const vector<size_t> &x_shape, const vector<size_t> &y_shape)
         : m_mode(mode), m_x_shape(x_shape), m_y_shape(y_shape) {}
 };
 
 
 Tensor binary_op(BinaryOpMode mode, Tensor& x, Tensor& y) {
-    Tensor res = Tensor(binary_op(mode, x.m_storage, y.m_storage));
-    if(x.m_need_grad || y.m_need_grad || x.m_require_grad || y.m_require_grad) {
+    Tensor res = Tensor(binary_op(mode, x.storage(), y.storage()));
+    if(x.need_grad() || y.need_grad()) {
         shared_ptr<GraphNode> x_node = x.graph_node();
         shared_ptr<GraphNode> y_node = y.graph_node();
         shared_ptr<GraphNode> out_node = res.graph_node();
-        shared_ptr<BackwardFunc> func = BinaryOpBackwarFunc::make(x_node, x.m_storage->m_shape, y_node, y.m_storage->m_shape, mode);
+        shared_ptr<BackwardFunc> func = BinaryOpBackwarFunc::make(x_node, x.shape(), y_node, y.storage()->shape(), mode);
         switch(mode) {
         case BinaryOpMode::MUL:
         case BinaryOpMode::DIV:
-            func->m_saved_tensors.push_back(x.m_storage);
-            func->m_saved_tensors.push_back(y.m_storage);
+            func->m_saved_tensors.push_back(x.storage());
+            func->m_saved_tensors.push_back(y.storage());
             break;
         default:
             break;
         }
         out_node->set_backward_func(func);
-        out_node->m_need_grad = true;
-        res.m_need_grad = true;
     }
     return res;
 }
@@ -535,16 +534,16 @@ Tensor binary_op(BinaryOpMode mode, Tensor& x, Tensor& y) {
 // *****************************************************************************
 struct ReLUBackwardFunc: UnaryBackwardFunc<ReLUBackwardFunc> {
     void backward_func(shared_ptr<GraphNode> out_node) override {
-        shared_ptr<TensorStorage> out_grad = out_node->m_grad_storage;
+        shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
         shared_ptr<TensorStorage> inp = m_saved_tensors[0];
-        shared_ptr<TensorStorage> res = mul(greater_then(inp, Tensor::get_const(0.).m_storage), out_grad);
+        shared_ptr<TensorStorage> res = mul(greater_then(inp, Tensor::get_const(0.).storage()), out_grad);
         m_input_nodes[0]->acc_grad(res);
     }
 };
 
 struct ExpBackwardFunc: UnaryBackwardFunc<ExpBackwardFunc> {
     void backward_func(shared_ptr<GraphNode> out_node) override {
-        shared_ptr<TensorStorage> out_grad = out_node->m_grad_storage;
+        shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
         shared_ptr<TensorStorage> out = m_saved_tensors[0];
         shared_ptr<TensorStorage> res = mul(out, out_grad);
         m_input_nodes[0]->acc_grad(res);
@@ -553,7 +552,7 @@ struct ExpBackwardFunc: UnaryBackwardFunc<ExpBackwardFunc> {
 
 struct LogBackwardFunc: UnaryBackwardFunc<LogBackwardFunc> {
     void backward_func(shared_ptr<GraphNode> out_node) override {
-        shared_ptr<TensorStorage> out_grad = out_node->m_grad_storage;
+        shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
         shared_ptr<TensorStorage> inp = m_saved_tensors[0];
         shared_ptr<TensorStorage> res = mul(reciprocal(inp), out_grad);
         m_input_nodes[0]->acc_grad(res);
@@ -562,7 +561,7 @@ struct LogBackwardFunc: UnaryBackwardFunc<LogBackwardFunc> {
 
 struct SigmoidBackwardFunc: UnaryBackwardFunc<SigmoidBackwardFunc> {
     void backward_func(shared_ptr<GraphNode> out_node) override {
-        shared_ptr<TensorStorage> out_grad = out_node->m_grad_storage;
+        shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
         shared_ptr<TensorStorage> inp = m_saved_tensors[0];
         shared_ptr<TensorStorage> res = mul(mul(sigmoid(inp), sigmoid(neg(inp))), out_grad);
         m_input_nodes[0]->acc_grad(res);
@@ -571,7 +570,7 @@ struct SigmoidBackwardFunc: UnaryBackwardFunc<SigmoidBackwardFunc> {
 
 struct NegBackwardFunc: UnaryBackwardFunc<NegBackwardFunc> {
     void backward_func(shared_ptr<GraphNode> out_node) override {
-        shared_ptr<TensorStorage> out_grad = out_node->m_grad_storage;
+        shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
         shared_ptr<TensorStorage> res = neg(out_grad);
         m_input_nodes[0]->acc_grad(res);
     }
@@ -579,14 +578,14 @@ struct NegBackwardFunc: UnaryBackwardFunc<NegBackwardFunc> {
 
 struct CopyBackwardFunc: UnaryBackwardFunc<CopyBackwardFunc> {
     void backward_func(shared_ptr<GraphNode> out_node) override {
-        shared_ptr<TensorStorage> out_grad = out_node->m_grad_storage;
+        shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
         m_input_nodes[0]->acc_grad(out_grad);
     }
 };
 
 struct ReciprocalBackwardFunc: UnaryBackwardFunc<ReciprocalBackwardFunc> {
     void backward_func(shared_ptr<GraphNode> out_node) override {
-        shared_ptr<TensorStorage> out_grad = out_node->m_grad_storage;
+        shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
         shared_ptr<TensorStorage> inp = m_saved_tensors[0];
         shared_ptr<TensorStorage> res = neg(reciprocal(mul(inp, inp)));
         m_input_nodes[0]->acc_grad(res);
@@ -595,28 +594,28 @@ struct ReciprocalBackwardFunc: UnaryBackwardFunc<ReciprocalBackwardFunc> {
 
 Tensor unary_op(UnaryOpMode mode, Tensor& x) {
     if(mode == UnaryOpMode::COPY)
-        return copy_op(x.m_storage);
-    Tensor res = Tensor(unary_op(mode, x.m_storage));
-    if(x.m_require_grad || x.m_need_grad) {
+        return copy_op(x.storage());
+    Tensor res = Tensor(unary_op(mode, x.storage()));
+    if(x.need_grad()) {
         shared_ptr<GraphNode> out_node = res.graph_node();
         shared_ptr<GraphNode> x_node = x.graph_node();
         shared_ptr<BackwardFunc> func;
         switch(mode) {
         case UnaryOpMode::RELU:
             func = ReLUBackwardFunc::make(x_node);
-            func->m_saved_tensors.push_back(x.m_storage);
+            func->m_saved_tensors.push_back(x.storage());
             break;
         case UnaryOpMode::EXP:
             func = ExpBackwardFunc::make(x_node);
-            func->m_saved_tensors.push_back(res.m_storage);
+            func->m_saved_tensors.push_back(res.storage());
             break;
         case UnaryOpMode::LOG:
             func = LogBackwardFunc::make(x_node);
-            func->m_saved_tensors.push_back(x.m_storage);
+            func->m_saved_tensors.push_back(x.storage());
             break;
         case UnaryOpMode::SIGMOID:
             func = SigmoidBackwardFunc::make(x_node);
-            func->m_saved_tensors.push_back(x.m_storage);
+            func->m_saved_tensors.push_back(x.storage());
             break;
         case UnaryOpMode::NEG:
             func = NegBackwardFunc::make(x_node);
@@ -626,14 +625,12 @@ Tensor unary_op(UnaryOpMode mode, Tensor& x) {
             break;
         case UnaryOpMode::RECIPROCAL:
             func = ReciprocalBackwardFunc::make(x_node);
-            func->m_saved_tensors.push_back(x.m_storage);
+            func->m_saved_tensors.push_back(x.storage());
             break;
         default:
             break;
         }
         out_node->set_backward_func(func);
-        out_node->m_need_grad = true;
-        res.m_need_grad = true;
     }
     return res;
 }

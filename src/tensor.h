@@ -17,7 +17,7 @@ struct BackwardFunc;
 
 
 struct RawTensor {
-    float *m_ptr;
+public:
     RawTensor(float *ptr): m_ptr(ptr) {
     }
 
@@ -30,15 +30,14 @@ struct RawTensor {
             cudaFree(m_ptr);
         }
     }
+
+private:
+    float *m_ptr;
 };
 
 
 struct TensorStorage {
-    std::shared_ptr<RawTensor> m_data;
-    size_t m_size;
-    vector<size_t> m_shape;
-    vector<size_t> m_strides;
-
+public:
     TensorStorage(float* data, size_t size, vector<size_t> shape, vector<size_t> strides)
     : m_data(std::make_shared<RawTensor>(data)), m_size(size), m_shape(shape), m_strides(strides) {
     }
@@ -49,15 +48,23 @@ struct TensorStorage {
 
     static shared_ptr<TensorStorage> zeros(vector<size_t> &shape);
 
-    size_t dim() {
+    inline size_t dim() {
         return m_shape.size();
     }
     
-    size_t size() {
+    inline size_t size() {
         return m_size;
     }
 
-    float* data() {
+    inline const vector<size_t>& shape() {
+        return m_shape;
+    }
+
+    inline const vector<size_t>& strides() {
+        return m_strides;
+    }
+
+    inline float* data() {
         return m_data.get()->ptr();
     }
 
@@ -65,18 +72,25 @@ struct TensorStorage {
         // if(m_data)
         //    cudaFree(m_data);
     }
+
+private:
+    std::shared_ptr<RawTensor> m_data;
+    size_t m_size;
+    vector<size_t> m_shape;
+    vector<size_t> m_strides;
 };
 
 
 struct Tensor {
+private:
     static size_t sm_id;
     static unordered_map<float, Tensor> sm_const_cache;
     size_t m_id;
-    bool m_require_grad = false;
-    bool m_need_grad = false;
+    bool m_requires_grad = false;
     shared_ptr<TensorStorage> m_storage;
     shared_ptr<GraphNode> m_graph_node;
 
+public:
     Tensor() {};
 
     Tensor(py::array_t<float> arr);
@@ -90,20 +104,39 @@ struct Tensor {
 
     ~Tensor();
 
-    size_t size();
+    inline size_t size() {
+        return m_storage->size();
+    }
 
-    size_t dim();
+    inline size_t dim() {
+        return m_storage->dim();
+    }
+
+    inline size_t id() {
+        return m_id;
+    }
+
+    inline const vector<size_t>& shape() {
+        return m_storage->shape();
+    }
+
+    inline const vector<size_t>& strides() {
+        return m_storage->strides();
+    }
+
+    inline shared_ptr<TensorStorage> storage() {
+        return m_storage;
+    }
 
     py::array_t<float> to_numpy();
 
-    void require_grad(bool required) {
-        m_require_grad = required;
+    void set_requires_grad(bool required);
+
+    bool requires_grad() {
+        return m_requires_grad;
     }
 
-    bool has_grad() {
-        return m_require_grad;
-    }
-
+    bool need_grad();
 
     void backward(Tensor &grad);
 
@@ -118,7 +151,7 @@ struct Tensor {
             //     fprintf(stderr, "id=%zu %d %lu\n", m_id, i, m_storage->m_shape[i]);
             // }
 
-            m_graph_node = make_shared<GraphNode>(m_require_grad, m_need_grad, m_id, m_storage->m_shape);
+            m_graph_node = make_shared<GraphNode>(m_requires_grad, m_id, shape());
         }
         return m_graph_node;
     }
@@ -131,8 +164,5 @@ struct Tensor {
 
     void set_value(Tensor &rhs);
 };
-
-
-
 
 #endif

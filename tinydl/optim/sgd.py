@@ -12,7 +12,7 @@ class SGD:
 
     def step(self):
         for n, p in self.named_parameters.items():
-            if not p.has_grad():
+            if not p.requires_grad:
                 continue
             p.set_value(p - self.lr * p.grad())
 

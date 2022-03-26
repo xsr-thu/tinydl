@@ -67,6 +67,17 @@ Tensor::Tensor(shared_ptr<TensorStorage> storage): m_storage(storage) {
 }
 
 
+void Tensor::set_requires_grad(bool required) {
+    m_requires_grad = required;
+    if(m_graph_node) {
+        m_graph_node->set_requires_grad(required);
+    }
+}
+
+bool Tensor::need_grad() {
+    return m_requires_grad || (m_graph_node && m_graph_node->need_grad());
+}
+
 Tensor& Tensor::get_const(float val) {
     if(!sm_const_cache.count(val)) {
         float *data;
@@ -106,14 +117,6 @@ Tensor::~Tensor() {
     // printf("Tensor dtor: %zu\n", m_id);
 }
 
-size_t Tensor::size() {
-    return m_storage->m_size;
-}
-
-size_t Tensor::dim() {
-    return m_storage->dim();
-}
-
 
 py::array_t<float> Tensor::to_numpy() {
     // fprintf(stderr, "To numpy <%zu>: shape %s strides %s size: %lu\n",
@@ -121,7 +124,7 @@ py::array_t<float> Tensor::to_numpy() {
     //         to_string(m_storage->m_shape).c_str(),
     //         to_string(m_storage->m_strides).c_str(),
     //         size());
-    auto result = py::array_t<float>(m_storage->m_shape, m_storage->m_strides);
+    auto result = py::array_t<float>(m_storage->shape(), m_storage->strides());
     py::buffer_info buf = result.request();
 
     float *ptr = static_cast<float*>(buf.ptr);
@@ -133,7 +136,7 @@ void Tensor::backward(Tensor &grad) {
     if(!m_graph_node) {
         fprintf(stderr, "can not backward tensor (%zu)!\n", m_id);
     } else {
-        m_graph_node->m_grad_storage = grad.m_storage;
+        m_graph_node->set_grad_storage(grad.m_storage);
         backprop(m_graph_node);
     }
 }
@@ -141,7 +144,7 @@ void Tensor::backward(Tensor &grad) {
 shared_ptr<BackwardFunc> Tensor::grad_fn() {
     if(!m_graph_node)
         return nullptr;
-    return m_graph_node->m_backward_func;
+    return m_graph_node->backward_func();
 }
 
 shared_ptr<Tensor> Tensor::grad() {
@@ -149,23 +152,23 @@ shared_ptr<Tensor> Tensor::grad() {
         printf("Tensor %zu no grad\n", this->m_id);
         return nullptr;
     }
-    return std::make_shared<Tensor>(m_graph_node->m_grad_storage);
+    return std::make_shared<Tensor>(m_graph_node->grad_storage());
 }
 
 
 void Tensor::zero_grad() {
-    if(m_graph_node && m_graph_node->m_grad_storage) {
-        m_graph_node->m_grad_storage.reset();
+    if(m_graph_node && m_graph_node->grad_storage()) {
+        m_graph_node->zero_grad();
     }
 }
 
 void Tensor::set_value(Tensor &rhs) {
     // fprintf(stderr, "%zu %zu %zu %zu\n", m_storage->size(), rhs.m_storage->size(), m_storage->dim(), rhs.m_storage->dim());
-    assert(m_storage->size() == rhs.m_storage->size());
-    assert(m_storage->dim() == rhs.m_storage->dim());
-    for(int i=0; i<m_storage->dim(); i++) {
-        assert(m_storage->m_shape[i] == rhs.m_storage->m_shape[i]);
+    assert(size() == rhs.size());
+    assert(dim() == rhs.dim());
+    for(int i=0; i < dim(); i++) {
+        assert(shape()[i] == rhs.shape()[i]);
     }
 
-    m_storage = opr::intl::copy(rhs.m_storage);
+    m_storage = opr::intl::copy(rhs.storage());
 }

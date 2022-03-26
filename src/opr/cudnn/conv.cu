@@ -12,8 +12,8 @@
 shared_ptr<TensorStorage> conv2d_forward(shared_ptr<TensorStorage> data, shared_ptr<TensorStorage> weight, size_t padding, size_t stride) {
     cudnnHandle_t* handle = HandleManager::get()->cudnn_handle();
 
-    vector<size_t>& data_shape = data->m_shape;
-    vector<size_t>& weight_shape = weight->m_shape;
+    const vector<size_t>& data_shape = data->shape();
+    const vector<size_t>& weight_shape = weight->shape();
     vector<size_t> output_shape(4);
     output_shape[0] = data_shape[0];
     output_shape[1] = weight_shape[0];
@@ -105,12 +105,15 @@ shared_ptr<TensorStorage> conv2d_forward(shared_ptr<TensorStorage> data, shared_
 }
 
 
-shared_ptr<TensorStorage> conv2d_bwd_data(vector<size_t> &data_shape,shared_ptr<TensorStorage> grad, shared_ptr<TensorStorage> weight,
+shared_ptr<TensorStorage> conv2d_bwd_data(
+        const vector<size_t> &data_shape,
+        shared_ptr<TensorStorage> grad,
+        shared_ptr<TensorStorage> weight,
         size_t padding, size_t stride) {
     cudnnHandle_t* handle = HandleManager::get()->cudnn_handle();
 
-    vector<size_t>& weight_shape = weight->m_shape;
-    vector<size_t> grad_shape = grad->m_shape;
+    const vector<size_t>& weight_shape = weight->shape();
+    const vector<size_t>& grad_shape = grad->shape();
 
     cudnnTensorDescriptor_t grad_desc;
     cudnnCreateTensorDescriptor(&grad_desc);
@@ -183,12 +186,16 @@ shared_ptr<TensorStorage> conv2d_bwd_data(vector<size_t> &data_shape,shared_ptr<
 }
 
 
-shared_ptr<TensorStorage> conv2d_bwd_filter(vector<size_t> &weight_shape, shared_ptr<TensorStorage> grad, shared_ptr<TensorStorage> data,
-        size_t padding, size_t stride) {
+shared_ptr<TensorStorage> conv2d_bwd_filter(
+        const vector<size_t>& weight_shape,
+        shared_ptr<TensorStorage> grad,
+        shared_ptr<TensorStorage> data,
+        size_t padding,
+        size_t stride) {
     cudnnHandle_t* handle = HandleManager::get()->cudnn_handle();
 
-    vector<size_t>& data_shape = data->m_shape;
-    vector<size_t> grad_shape = grad->m_shape;
+    const vector<size_t>& data_shape = data->shape();
+    const vector<size_t>& grad_shape = grad->shape();
 
     cudnnTensorDescriptor_t grad_desc;
     cudnnCreateTensorDescriptor(&grad_desc);
@@ -275,18 +282,18 @@ struct Conv2DOpBackwarFunc: BackwardFunc {
     }
 
     void backward_func(shared_ptr<GraphNode> out_node) override {
-        shared_ptr<TensorStorage> out_grad = out_node->m_grad_storage;
+        shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
         shared_ptr<TensorStorage> data = m_saved_tensors[0];
         shared_ptr<TensorStorage> weight = m_saved_tensors[1];
         
         shared_ptr<TensorStorage> g1 = conv2d_bwd_data(
-                this->m_input_nodes[0]->m_shape,
+                this->m_input_nodes[0]->shape(),
                 out_grad,
                 weight,
                 m_padding,
                 m_stride);
         shared_ptr<TensorStorage> g2 = conv2d_bwd_filter(
-                this->m_input_nodes[1]->m_shape,
+                this->m_input_nodes[1]->shape(),
                 out_grad,
                 data,
                 m_padding,
@@ -301,20 +308,18 @@ struct Conv2DOpBackwarFunc: BackwardFunc {
 namespace opr {
 
 Tensor conv2d(Tensor& data, Tensor& weight, size_t padding, size_t stride) {
-    Tensor res(conv2d_forward(data.m_storage, weight.m_storage, padding, stride));
+    Tensor res(conv2d_forward(data.storage(), weight.storage(), padding, stride));
     
-    if(data.m_need_grad || weight.m_need_grad || data.m_require_grad || weight.m_require_grad) {
+    if(data.need_grad() || weight.need_grad()) {
         shared_ptr<GraphNode> x_node = data.graph_node();
         shared_ptr<GraphNode> y_node = weight.graph_node();
         shared_ptr<GraphNode> out_node = res.graph_node();
         shared_ptr<BackwardFunc> func = Conv2DOpBackwarFunc::make(x_node, y_node, padding, stride);
     
-        func->m_saved_tensors.push_back(data.m_storage);
-        func->m_saved_tensors.push_back(weight.m_storage);
+        func->m_saved_tensors.push_back(data.storage());
+        func->m_saved_tensors.push_back(weight.storage());
         
         out_node->set_backward_func(func);
-        out_node->m_need_grad = true;
-        res.m_need_grad = true;
     }
     return res;
 }
