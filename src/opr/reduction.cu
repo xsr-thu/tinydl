@@ -114,18 +114,16 @@ shared_ptr<TensorStorage> reduction(const ReductionMode mode, shared_ptr<TensorS
     float *res;
     cudaMalloc(&res, sizeof(float) * output_size);
 
-    TensorFormat *in_format = TensorFormat::make_cuda_tensor_format(input);
-    TensorFormat *out_format = TensorFormat::make_cuda_tensor_format(output_shape, output_strides);
+    std::shared_ptr<TensorFormat> in_format = TensorFormat::make_cuda_tensor_format(input);
+    std::shared_ptr<TensorFormat> out_format = TensorFormat::make_cuda_tensor_format(output_shape, output_strides);
 
     int block_size = 128;
     int n_block = (output_size + block_size - 1) / block_size;
-    kernel_reduction_op<<<n_block, block_size>>>(res, out_format, input->data(), in_format, mode);
+    kernel_reduction_op<<<n_block, block_size>>>(res, out_format.get(), input->data(), in_format.get(), mode);
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
         printf("error\n");
     }
-    out_format->release();
-    in_format->release();
 
     vector<size_t> out_shape;
     vector<size_t> out_strides;

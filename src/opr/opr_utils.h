@@ -4,6 +4,7 @@
 #include <sstream>
 #include <cuda_runtime.h>
 #include "tensor.h"
+#include <memory>
 
 
 template<typename T>
@@ -44,6 +45,9 @@ std::string to_string(T &data) {
     return ToStringTrait<T>::to_string(data);
 }
 
+struct TensorFormat;
+
+using CudaTensorFormatPtr = std::shared_ptr<TensorFormat>;
 
 struct TensorFormat{
     static const size_t MAX_DIM=7;
@@ -53,7 +57,7 @@ struct TensorFormat{
     size_t shape[MAX_DIM];
     size_t strides[MAX_DIM];
 
-    static TensorFormat* make_cuda_tensor_format(Tensor tensor) {
+    static CudaTensorFormatPtr make_cuda_tensor_format(Tensor tensor) {
         TensorFormat format{tensor.size(), tensor.dim()};
         for(size_t i=0; i<tensor.dim(); i++) {
             format.shape[i] = tensor.shape()[i];
@@ -62,10 +66,10 @@ struct TensorFormat{
         TensorFormat *dev_format;
         cudaMalloc(&dev_format, sizeof(TensorFormat));
         cudaMemcpy(dev_format, &format, sizeof(TensorFormat), cudaMemcpyHostToDevice);
-        return dev_format;
+        return std::shared_ptr<TensorFormat>(dev_format, [](TensorFormat* ptr){cudaFree(ptr);});
     }
 
-    static TensorFormat* make_cuda_tensor_format(const vector<size_t> &shape, const vector<size_t> &strides) {
+    static CudaTensorFormatPtr make_cuda_tensor_format(const vector<size_t> &shape, const vector<size_t> &strides) {
         size_t size = 1;
         cudaError_t err;
         for(size_t s: shape) {
@@ -86,7 +90,7 @@ struct TensorFormat{
             printf("cuda error %s\n", cudaGetErrorString(err));
         }
         // printf("make format: %zu %p\n", format.shape[0], dev_format);
-        return dev_format;
+        return std::shared_ptr<TensorFormat>(dev_format, [](TensorFormat* ptr){cudaFree(ptr);});
     }
 
     std::string to_string() {
@@ -106,10 +110,6 @@ struct TensorFormat{
         }
         ss << ")>";
         return ss.str();
-    }
-
-    void release() {
-        cudaFree(this);
     }
 };
 

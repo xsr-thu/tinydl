@@ -183,7 +183,7 @@ shared_ptr<TensorStorage> binary_op(BinaryOpMode mode, shared_ptr<TensorStorage>
     } else {
         vector<size_t> out_shape;
         vector<size_t> out_strides;
-        TensorFormat *x_format, *y_format, *out_format;
+        std::shared_ptr<TensorFormat> x_format, y_format, out_format;
         size_t res_size;
 
         if(x->dim() == y->dim()) {
@@ -247,9 +247,9 @@ shared_ptr<TensorStorage> binary_op(BinaryOpMode mode, shared_ptr<TensorStorage>
         int block_size = 128;
         int n_block = (res_size + block_size - 1) / block_size;
 
-        kernel_binary_op<<<n_block, block_size>>>(res, out_format,
-                x->data(), x_format, 
-                y->data(), y_format, 
+        kernel_binary_op<<<n_block, block_size>>>(res, out_format.get(),
+                x->data(), x_format.get(),
+                y->data(), y_format.get(),
                 res_size, mode);
         cudaError_t err = cudaGetLastError();
         if (err != cudaSuccess) {

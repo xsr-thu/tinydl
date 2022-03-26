@@ -108,9 +108,9 @@ shared_ptr<TensorStorage> matmul_op(const shared_ptr<TensorStorage> x, bool x_tr
     float *res;
     cudaMalloc(&res, sizeof(float) * output_size);
 
-    TensorFormat *x_format = TensorFormat::make_cuda_tensor_format(x_shape, x_strides);
-    TensorFormat *y_format = TensorFormat::make_cuda_tensor_format(y_shape, y_strides);
-    TensorFormat *out_format = TensorFormat::make_cuda_tensor_format(output_shape, output_strides);
+    std::shared_ptr<TensorFormat> x_format = TensorFormat::make_cuda_tensor_format(x_shape, x_strides);
+    std::shared_ptr<TensorFormat> y_format = TensorFormat::make_cuda_tensor_format(y_shape, y_strides);
+    std::shared_ptr<TensorFormat> out_format = TensorFormat::make_cuda_tensor_format(output_shape, output_strides);
 
     // 
     int block_size = 32;
@@ -119,14 +119,11 @@ shared_ptr<TensorStorage> matmul_op(const shared_ptr<TensorStorage> x, bool x_tr
             (output_shape[2] +block_size - 1)/block_size, 
             output_shape[0]);
     
-    kernel_matmul<<<blocks, threads>>>(res, out_format, x->data(), x_format, y->data(), y_format);
+    kernel_matmul<<<blocks, threads>>>(res, out_format.get(), x->data(), x_format.get(), y->data(), y_format.get());
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
         printf("error\n");
     }
-    x_format->release();
-    y_format->release();
-    out_format->release();
     if(x_extended && y_extended) {
         output_shape.erase(output_shape.begin());
         output_strides.erase(output_strides.begin());
