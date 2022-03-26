@@ -10,8 +10,7 @@
 
 
 shared_ptr<TensorStorage> conv2d_forward(shared_ptr<TensorStorage> data, shared_ptr<TensorStorage> weight, size_t padding, size_t stride) {
-    cudnnHandle_t handle;
-    CUDNN_CHECK(cudnnCreate(&handle));
+    cudnnHandle_t* handle = HandleManager::get()->cudnn_handle();
 
     vector<size_t>& data_shape = data->m_shape;
     vector<size_t>& weight_shape = weight->m_shape;
@@ -72,7 +71,7 @@ shared_ptr<TensorStorage> conv2d_forward(shared_ptr<TensorStorage> data, shared_
             CUDNN_CROSS_CORRELATION, CUDNN_DATA_FLOAT));
 
     size_t space_size = 0;
-    CUDNN_CHECK(cudnnGetConvolutionForwardWorkspaceSize(handle, input_desc, kernel_desc, conv_desc, output_desc,
+    CUDNN_CHECK(cudnnGetConvolutionForwardWorkspaceSize(*handle, input_desc, kernel_desc, conv_desc, output_desc,
             CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM, &space_size));
 
     void* workspace = nullptr;
@@ -84,7 +83,7 @@ shared_ptr<TensorStorage> conv2d_forward(shared_ptr<TensorStorage> data, shared_
     float alpha = 1.0;
     float beta = .0;
 
-    CUDNN_CHECK(cudnnConvolutionForward(handle, &alpha, 
+    CUDNN_CHECK(cudnnConvolutionForward(*handle, &alpha,
             input_desc, data->data(),
             kernel_desc, weight->data(),
             conv_desc, CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM, workspace, space_size,
@@ -95,7 +94,6 @@ shared_ptr<TensorStorage> conv2d_forward(shared_ptr<TensorStorage> data, shared_
     cudnnDestroyTensorDescriptor(output_desc);
     cudnnDestroyFilterDescriptor(kernel_desc);
     cudnnDestroyConvolutionDescriptor(conv_desc);
-    cudnnDestroy(handle);
 
     vector<size_t> out_strides(4);
     size_t size = sizeof(float);
@@ -109,8 +107,7 @@ shared_ptr<TensorStorage> conv2d_forward(shared_ptr<TensorStorage> data, shared_
 
 shared_ptr<TensorStorage> conv2d_bwd_data(vector<size_t> &data_shape,shared_ptr<TensorStorage> grad, shared_ptr<TensorStorage> weight,
         size_t padding, size_t stride) {
-    cudnnHandle_t handle;
-    CUDNN_CHECK(cudnnCreate(&handle));
+    cudnnHandle_t* handle = HandleManager::get()->cudnn_handle();
 
     vector<size_t>& weight_shape = weight->m_shape;
     vector<size_t> grad_shape = grad->m_shape;
@@ -152,7 +149,7 @@ shared_ptr<TensorStorage> conv2d_bwd_data(vector<size_t> &data_shape,shared_ptr<
             CUDNN_CROSS_CORRELATION, CUDNN_DATA_FLOAT));
 
     size_t space_size = 0;
-    CUDNN_CHECK(cudnnGetConvolutionBackwardDataWorkspaceSize(handle, kernel_desc, grad_desc, conv_desc, data_desc,
+    CUDNN_CHECK(cudnnGetConvolutionBackwardDataWorkspaceSize(*handle, kernel_desc, grad_desc, conv_desc, data_desc,
             CUDNN_CONVOLUTION_BWD_DATA_ALGO_0, &space_size));
 
     void* workspace = nullptr;
@@ -164,7 +161,7 @@ shared_ptr<TensorStorage> conv2d_bwd_data(vector<size_t> &data_shape,shared_ptr<
     float alpha = 1.0;
     float beta = 0.0;
 
-    CUDNN_CHECK(cudnnConvolutionBackwardData(handle, &alpha, 
+    CUDNN_CHECK(cudnnConvolutionBackwardData(*handle, &alpha,
             kernel_desc, weight->data(),
             grad_desc, grad->data(),
             conv_desc, CUDNN_CONVOLUTION_BWD_DATA_ALGO_0, workspace, space_size,
@@ -175,7 +172,6 @@ shared_ptr<TensorStorage> conv2d_bwd_data(vector<size_t> &data_shape,shared_ptr<
     cudnnDestroyTensorDescriptor(data_desc);
     cudnnDestroyFilterDescriptor(kernel_desc);
     cudnnDestroyConvolutionDescriptor(conv_desc);
-    cudnnDestroy(handle);
 
     vector<size_t> data_strides(4);
     size_t size = sizeof(float);
@@ -189,8 +185,7 @@ shared_ptr<TensorStorage> conv2d_bwd_data(vector<size_t> &data_shape,shared_ptr<
 
 shared_ptr<TensorStorage> conv2d_bwd_filter(vector<size_t> &weight_shape, shared_ptr<TensorStorage> grad, shared_ptr<TensorStorage> data,
         size_t padding, size_t stride) {
-    cudnnHandle_t handle;
-    CUDNN_CHECK(cudnnCreate(&handle));
+    cudnnHandle_t* handle = HandleManager::get()->cudnn_handle();
 
     vector<size_t>& data_shape = data->m_shape;
     vector<size_t> grad_shape = grad->m_shape;
@@ -232,7 +227,7 @@ shared_ptr<TensorStorage> conv2d_bwd_filter(vector<size_t> &weight_shape, shared
             CUDNN_CROSS_CORRELATION, CUDNN_DATA_FLOAT));
 
     size_t space_size = 0;
-    CUDNN_CHECK(cudnnGetConvolutionBackwardFilterWorkspaceSize(handle, data_desc, grad_desc, conv_desc, kernel_desc,
+    CUDNN_CHECK(cudnnGetConvolutionBackwardFilterWorkspaceSize(*handle, data_desc, grad_desc, conv_desc, kernel_desc,
             CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0, &space_size));
 
     void* workspace = nullptr;
@@ -244,7 +239,7 @@ shared_ptr<TensorStorage> conv2d_bwd_filter(vector<size_t> &weight_shape, shared
     float alpha = 1.0;
     float beta = 0.0;
 
-    CUDNN_CHECK(cudnnConvolutionBackwardFilter(handle, &alpha, 
+    CUDNN_CHECK(cudnnConvolutionBackwardFilter(*handle, &alpha,
             data_desc, data->data(),
             grad_desc, grad->data(),
             conv_desc, CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0, workspace, space_size,
@@ -255,7 +250,6 @@ shared_ptr<TensorStorage> conv2d_bwd_filter(vector<size_t> &weight_shape, shared
     cudnnDestroyTensorDescriptor(data_desc);
     cudnnDestroyFilterDescriptor(kernel_desc);
     cudnnDestroyConvolutionDescriptor(conv_desc);
-    cudnnDestroy(handle);
 
     vector<size_t> weight_grad_strides(4);
     size_t size = sizeof(float);

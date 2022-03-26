@@ -15,8 +15,7 @@ shared_ptr<TensorStorage> batchnorm_forward(
 
     // TODO: Check stride
 
-    cudnnHandle_t handle;
-    CUDNN_CHECK(cudnnCreate(&handle));
+    cudnnHandle_t* handle = HandleManager::get()->cudnn_handle();
 
     cudnnTensorDescriptor_t xDesc, bnOtherDesc;
     cudnnCreateTensorDescriptor(&xDesc);
@@ -39,7 +38,7 @@ shared_ptr<TensorStorage> batchnorm_forward(
     float alpha=1., beta=0.;
     if (is_train) {
          CUDNN_CHECK(cudnnBatchNormalizationForwardTraining(
-                    handle,
+                    *handle,
                     CUDNN_BATCHNORM_SPATIAL,
                     &alpha, &beta,
                     xDesc, data->data(),
@@ -53,7 +52,7 @@ shared_ptr<TensorStorage> batchnorm_forward(
                     ));
     } else {
         CUDNN_CHECK(cudnnBatchNormalizationForwardInference(
-                    handle,
+                    *handle,
                     CUDNN_BATCHNORM_SPATIAL,
                     &alpha, &beta,
                     xDesc, data->data(),
@@ -67,7 +66,6 @@ shared_ptr<TensorStorage> batchnorm_forward(
 
     cudnnDestroyTensorDescriptor(xDesc);
     cudnnDestroyTensorDescriptor(bnOtherDesc);
-    cudnnDestroy(handle);
     return make_shared<TensorStorage>(dev_output, data->size(), data->m_shape, data->m_strides);
 }
 
@@ -85,8 +83,7 @@ vector<shared_ptr<TensorStorage>> batchnorm_backward(
 
     // TODO: Check stride
 
-    cudnnHandle_t handle;
-    CUDNN_CHECK(cudnnCreate(&handle));
+    cudnnHandle_t* handle = HandleManager::get()->cudnn_handle();
 
     cudnnTensorDescriptor_t xDesc, bnOtherDesc;
     cudnnCreateTensorDescriptor(&xDesc);
@@ -109,7 +106,7 @@ vector<shared_ptr<TensorStorage>> batchnorm_backward(
 
     float alpha=1., beta=0.;
      CUDNN_CHECK(cudnnBatchNormalizationBackward(
-                handle,
+                *handle,
                 CUDNN_BATCHNORM_SPATIAL,
                 &alpha, &beta,
                 &alpha, &beta,
@@ -125,7 +122,6 @@ vector<shared_ptr<TensorStorage>> batchnorm_backward(
 
     cudnnDestroyTensorDescriptor(xDesc);
     cudnnDestroyTensorDescriptor(bnOtherDesc);
-    cudnnDestroy(handle);
 
     shared_ptr<TensorStorage> dx = make_shared<TensorStorage>(dev_grad, data->size(), data->m_shape, data->m_strides);
     shared_ptr<TensorStorage> d_bn_scale = make_shared<TensorStorage>(dev_d_bn_scale, scale->size(), scale->m_shape, scale->m_strides);
