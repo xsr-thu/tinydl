@@ -99,6 +99,16 @@ class Module:
             s = {k.replace(prefix, ""): v for k, v in state.items() if k.startswith(prefix)}
             mod.load_state_dict(s)
 
+    def state_dict(self):
+        state = OrderedDict()
+        for m_name, mod in self.named_children():
+            prefix = "{}.".format(m_name)
+            for k, v in mod.state_dict().items():
+                state["{}.{}".format(m_name, k)] = v
+        for k, v in self.named_parameters():
+            state[k] = v.numpy()
+        return state
+
 
 class Linear(Module):
     def __init__(self, in_features, out_features, bias=True):
