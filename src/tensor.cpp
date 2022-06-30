@@ -9,38 +9,37 @@ unordered_map<float, Tensor> Tensor::sm_const_cache;
 
 shared_ptr<TensorStorage> TensorStorage::zeros(vector<size_t> &shape) {
     float *dev;
-    size_t size = 1;
+    size_t n_elem = 1;
     vector<size_t> strides(shape.size());
 
     for(int i=shape.size() - 1; i>=0; --i) {
-        strides[i] = size * sizeof(float);
-        size *= shape[i];
+        strides[i] = n_elem;
+        n_elem *= shape[i];
     }
 
-    cudaMalloc(&dev, sizeof(float) * size);
-    cudaMemset(dev, 0., sizeof(float) * size);
-    return make_shared<TensorStorage>(dev, size, shape, strides);
+    cudaMalloc(&dev, sizeof(float) * n_elem);
+    cudaMemset(dev, 0., sizeof(float) * n_elem);
+    return make_shared<TensorStorage>(dev, n_elem, shape, strides);
 }
 
 
 Tensor::Tensor(py::array_t<float> arr) {
     py::buffer_info info = arr.request();
-    size_t size = 1;
+    size_t n_elem = 1;
     vector<size_t> shape;
     vector<size_t> strides;
 
     for(size_t i=0; i<info.shape.size(); i++) {
         shape.push_back(info.shape[i]);
-        size *= info.shape[i];
+        n_elem *= info.shape[i];
     }
     for(size_t i=0; i<info.strides.size(); i++) {
-        strides.push_back(info.strides[i]);
+        strides.push_back(info.strides[i] / sizeof(float));
     }
     float *ptr;
-    cudaMalloc(&ptr, sizeof(float)*size);
-    // memcpy(m_data, (float*)info.ptr, sizeof(float) * size);
-    cudaMemcpy(ptr, (float*)info.ptr, sizeof(float)*size, cudaMemcpyHostToDevice);
-    m_storage = make_shared<TensorStorage>(ptr, size, shape, strides);
+    cudaMalloc(&ptr, sizeof(float)*n_elem);
+    cudaMemcpy(ptr, (float*)info.ptr, sizeof(float)*n_elem, cudaMemcpyHostToDevice);
+    m_storage = make_shared<TensorStorage>(ptr, n_elem, shape, strides);
     m_id = sm_id++;
     // printf("Tensor ctor: %zu\n", m_id);
     // fprintf(stderr, "Create Tensor(%zu) from numpy shape %s stride %s\n", m_id,  to_string(shape).c_str(), to_string(strides).c_str());
@@ -88,7 +87,7 @@ Tensor& Tensor::get_const(float val) {
         vector<size_t> shape;
         vector<size_t> strides;
         shape.push_back(1);
-        strides.push_back(sizeof(float));
+        strides.push_back(1);
         Tensor t{data, shape, strides};
         sm_const_cache[val] = t;
     }
@@ -124,7 +123,11 @@ py::array_t<float> Tensor::to_numpy() {
     //         to_string(m_storage->m_shape).c_str(),
     //         to_string(m_storage->m_strides).c_str(),
     //         size());
-    auto result = py::array_t<float>(m_storage->shape(), m_storage->strides());
+    vector<size_t> strides(m_storage->strides().size());
+    for(int i=0; i<strides.size(); i++) {
+        strides[i] = m_storage->strides()[i] * sizeof(float);
+    }
+    auto result = py::array_t<float>(m_storage->shape(), strides);
     py::buffer_info buf = result.request();
 
     float *ptr = static_cast<float*>(buf.ptr);

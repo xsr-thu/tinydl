@@ -111,7 +111,7 @@ __global__ void kernel_reduction_op(float *out, TensorFormat *out_format, float*
         // to index
         size_t in_ordinal = 0;
         for(size_t j=0; j<in_format->dim; j++) {
-            in_ordinal += out_idx[j] * in_format->strides[j] / sizeof(float);
+            in_ordinal += out_idx[j] * in_format->strides[j];
             // printf("  idx=%d out_idx[%lu]=%lu, strides[%lu]=%lu --> %lu\n", idx, j, out_idx[j], j, in_format->strides[j], in_ordinal);
         }
         ans = Op::apply(ans, in[in_ordinal]);
@@ -146,10 +146,10 @@ struct ReductionBackwardFunc: BackwardFunc {
 
         if(!m_keep_dim) {
             vector<size_t> old_strides(m_old_shape.size());
-            size_t s = sizeof(float);
+            size_t n_elem = 1;
             for(int i=m_old_shape.size() - 1; i>=0; --i) {
-                old_strides[i] = s;
-                s *= m_old_shape[i];
+                old_strides[i] = n_elem;
+                n_elem *= m_old_shape[i];
             }
 
             shared_ptr<TensorStorage> new_storage = make_shared<TensorStorage>(
@@ -172,7 +172,7 @@ shared_ptr<TensorStorage> reduction(const ReductionMode mode, shared_ptr<TensorS
         keep[axis[i]] = false;
     }
     for(int i=output_shape.size() - 1; i>= 0; --i) {
-        output_strides[i] = output_size * sizeof(float);
+        output_strides[i] = output_size;
         output_size *= output_shape[i];
     }
     float *res;

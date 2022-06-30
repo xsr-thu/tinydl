@@ -28,12 +28,12 @@ __global__ void kernel_matmul(float *out, TensorFormat *out_format,
         size_t idx_b = batch_stride_b * batch_idx + b_format->strides[2] * idx_y + b_format->strides[1] * (r + inner_x);
         
         if(idx_x < a_format->shape[1] && (r + inner_y) < a_format->shape[2])
-            buf_a[inner_x][inner_y] = a[idx_a/sizeof(float)];
+            buf_a[inner_x][inner_y] = a[idx_a];
         else
             buf_a[inner_x][inner_y] = 0.f;
         
         if((r + inner_x) < b_format->shape[1] && idx_y < b_format->shape[2])
-            buf_b[inner_x][inner_y] = b[idx_b/sizeof(float)];
+            buf_b[inner_x][inner_y] = b[idx_b];
         else
             buf_b[inner_x][inner_y] = 0.f;
         __syncthreads();
@@ -43,7 +43,7 @@ __global__ void kernel_matmul(float *out, TensorFormat *out_format,
         }
         __syncthreads();
     }
-    size_t out_idx = (batch_stride_o * batch_idx + out_format->strides[1] * idx_x + out_format->strides[2] * idx_y) / sizeof(float);
+    size_t out_idx = (batch_stride_o * batch_idx + out_format->strides[1] * idx_x + out_format->strides[2] * idx_y);
     if(idx_x<out_format->shape[1] && idx_y < out_format->shape[2])
         out[out_idx] = ans;
 }
@@ -101,7 +101,7 @@ shared_ptr<TensorStorage> matmul_op(const shared_ptr<TensorStorage> x, bool x_tr
 
     output_strides.resize(output_shape.size());
     for(size_t i=output_shape.size() - 1; i > 0 ; --i) {
-        output_strides[i] = output_size * sizeof(float);
+        output_strides[i] = output_size;
         output_size *= output_shape[i];
     }
 

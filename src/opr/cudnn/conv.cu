@@ -96,12 +96,12 @@ shared_ptr<TensorStorage> conv2d_forward(shared_ptr<TensorStorage> data, shared_
     cudnnDestroyConvolutionDescriptor(conv_desc);
 
     vector<size_t> out_strides(4);
-    size_t size = sizeof(float);
+    size_t n_elem = 1;
     for(int i=3;i>=0; i--) {
-        out_strides[i] = size;
-        size *= output_shape[i];
+        out_strides[i] = n_elem;
+        n_elem *= output_shape[i];
     }
-    return make_shared<TensorStorage>(dev_output, size / sizeof(float), output_shape, out_strides);
+    return make_shared<TensorStorage>(dev_output, n_elem, output_shape, out_strides);
 }
 
 
@@ -177,12 +177,12 @@ shared_ptr<TensorStorage> conv2d_bwd_data(
     cudnnDestroyConvolutionDescriptor(conv_desc);
 
     vector<size_t> data_strides(4);
-    size_t size = sizeof(float);
+    size_t n_elem = 1;
     for(int i=3;i>=0; i--) {
-        data_strides[i] = size;
-        size *= data_shape[i];
+        data_strides[i] = n_elem;
+        n_elem *= data_shape[i];
     }
-    return make_shared<TensorStorage>(dev_data_grad, size / sizeof(float), data_shape, data_strides);
+    return make_shared<TensorStorage>(dev_data_grad, n_elem, data_shape, data_strides);
 }
 
 
@@ -259,12 +259,12 @@ shared_ptr<TensorStorage> conv2d_bwd_filter(
     cudnnDestroyConvolutionDescriptor(conv_desc);
 
     vector<size_t> weight_grad_strides(4);
-    size_t size = sizeof(float);
+    size_t n_elem = 1;
     for(int i=3;i>=0; i--) {
-        weight_grad_strides[i] = size;
-        size *= weight_shape[i];
+        weight_grad_strides[i] = n_elem;
+        n_elem *= weight_shape[i];
     }
-    return make_shared<TensorStorage>(dev_kernel_grad, size / sizeof(float), weight_shape, weight_grad_strides);
+    return make_shared<TensorStorage>(dev_kernel_grad, n_elem, weight_shape, weight_grad_strides);
 }
 
 

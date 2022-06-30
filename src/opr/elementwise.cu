@@ -89,8 +89,8 @@ __global__ void kernel_binary_op(float *out, TensorFormat *out_format,
     
     size_t idx_a = 0, idx_b = 0;
     for(int i=0; i<out_format->dim; i++) {
-        size_t sa = a_format->shape[i] == 1 ? 0: (a_format->strides[i] / sizeof(float));
-        size_t sb = b_format->shape[i] == 1 ? 0: (b_format->strides[i] / sizeof(float));
+        size_t sa = a_format->shape[i] == 1 ? 0: (a_format->strides[i]);
+        size_t sb = b_format->shape[i] == 1 ? 0: (b_format->strides[i]);
         idx_a  += sa * indices[i];
         idx_b  += sb * indices[i];
     }
@@ -192,7 +192,7 @@ shared_ptr<TensorStorage> binary_op(BinaryOpMode mode, shared_ptr<TensorStorage>
             size_t s = 1;
             for(int i=x->dim() - 1;i >= 0; i--) {
                 out_shape[i] = max(x->shape()[i], y->shape()[i]);
-                out_strides[i] = s * sizeof(float);
+                out_strides[i] = s;
                 s *= out_shape[i];
             }
             res_size = s;
@@ -209,7 +209,7 @@ shared_ptr<TensorStorage> binary_op(BinaryOpMode mode, shared_ptr<TensorStorage>
             size_t s = 1;
             for(int i=y->dim() - 1;i >= 0; i--) {
                 out_shape[i] = y->shape()[i];
-                out_strides[i] = s * sizeof(float);
+                out_strides[i] = s;
                 s *= out_shape[i];
                 x_shape[i] = 1;
                 x_strides[i] = 1;
@@ -228,7 +228,7 @@ shared_ptr<TensorStorage> binary_op(BinaryOpMode mode, shared_ptr<TensorStorage>
             size_t s = 1;
             for(int i=x->dim() - 1;i >= 0; i--) {
                 out_shape[i] = x->shape()[i];
-                out_strides[i] = s * sizeof(float);
+                out_strides[i] = s;
                 s *= out_shape[i];
                 y_shape[i] = 1;
                 y_strides[i] = 1;

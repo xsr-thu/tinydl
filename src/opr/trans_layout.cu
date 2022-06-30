@@ -36,7 +36,7 @@ Tensor view(Tensor& x, std::vector<size_t> &new_shape) {
     size_t new_size = 1;
     std::vector<size_t> new_strides(new_shape.size());
     for(int i=new_shape.size() - 1; i >= 0; --i) {
-        new_strides[i] = new_size * sizeof(float);
+        new_strides[i] = new_size;
         new_size *= new_shape[i];
     }
 
