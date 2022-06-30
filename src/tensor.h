@@ -35,15 +35,30 @@ private:
     float *m_ptr;
 };
 
+template<class T>
+static std::string to_string(std::vector<T> &data) {
+    std::stringstream ss;
+    ss << "(";
+    for(int i=0;i<data.size(); i++) {
+        ss << data[i];
+        if(i!=data.size() - 1)
+            ss << ", ";
+    }
+    ss << ")";
+    return ss.str();
+}
+
 
 struct TensorStorage {
 public:
     TensorStorage(float* data, size_t size, vector<size_t> shape, vector<size_t> strides)
     : m_data(std::make_shared<RawTensor>(data)), m_size(size), m_shape(shape), m_strides(strides) {
+        // fprintf(stderr, "strides: %s\n", to_string(m_strides).c_str());
     }
 
     TensorStorage(shared_ptr<TensorStorage> old_storage, vector<size_t> &shape, vector<size_t> &strides)
     : m_data(old_storage->m_data), m_size(old_storage->size()), m_shape(shape), m_strides(strides) {
+        // fprintf(stderr, "strides: %s\n", to_string(m_strides).c_str());
     }
 
     static shared_ptr<TensorStorage> zeros(vector<size_t> &shape);
