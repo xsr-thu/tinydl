@@ -6,78 +6,121 @@
 
 using namespace std;
 
-struct BinaryOpBackwarFunc;
+struct BinaryOpBackwarFuncBase;
 
 // *****************************************************************************
-enum class BinaryOpMode{
-    UNDEFINED=0,
-    ADD,
-    SUB,
-    MUL,
-    DIV,
-    EQ,
-    LT,
-    LE,
-    GT,
-    GE
+struct ReluOp {
+    static __device__ __forceinline__ float apply(float x) {
+        return x > 0.0f ? x: 0.0f;
+    }
+};
+
+struct ExpOp {
+    static __device__ __forceinline__ float apply(float x) {
+        return expf(x);
+    }
+};
+
+struct LogOp {
+    static __device__ __forceinline__ float apply(float x) {
+        return logf(x);
+    }
+};
+
+struct SigmoidOp {
+    static __device__ __forceinline__ float apply(float x) {
+        return 1.f / (1.f + expf(x));
+    }
+};
+
+struct NegOp {
+    static __device__ __forceinline__ float apply(float x) {
+        return -x;
+    }
+};
+
+struct CopyOp {
+    static __device__ __forceinline__ float apply(float x) {
+        return x;
+    }
+};
+
+struct ReciprocalOp {
+    static __device__ __forceinline__ float apply(float x) {
+        return 1.f / x;
+    }
 };
 
 
-enum class UnaryOpMode {
-    UNDEFINED=0,
-    RELU,
-    EXP,
-    LOG,
-    SIGMOID,
-    NEG,
-    COPY,
-    RECIPROCAL,
+struct AddOp {
+    static __device__ __forceinline__ float apply(float lhs, float rhs) {
+        return lhs + rhs;
+    }
 };
 
+struct SubOp {
+    static __device__ __forceinline__ float apply(float lhs, float rhs) {
+        return lhs - rhs;
+    }
+};
+
+struct MulOp {
+    static __device__ __forceinline__ float apply(float lhs, float rhs) {
+        return lhs * rhs;
+    }
+};
+
+struct DivOp {
+    static __device__ __forceinline__ float apply(float lhs, float rhs) {
+        return lhs / rhs;
+    }
+};
+
+struct EqualOp {
+    static __device__ __forceinline__ float apply(float lhs, float rhs) {
+        return lhs == rhs ? 1.0: 0.0;
+    }
+};
+
+struct LessThenOp {
+    static __device__ __forceinline__ float apply(float lhs, float rhs) {
+        return lhs < rhs ? 1.0: 0.0;
+    }
+};
+
+struct LessEqualOp {
+    static __device__ __forceinline__ float apply(float lhs, float rhs) {
+        return lhs <= rhs ? 1.0: 0.0;
+    }
+};
+
+struct GreaterThenOp {
+    static __device__ __forceinline__ float apply(float lhs, float rhs) {
+        return lhs > rhs ? 1.0: 0.0;
+    }
+};
+
+struct GreaterEqualOp {
+    static __device__ __forceinline__ float apply(float lhs, float rhs) {
+        return lhs >= rhs ? 1.0: 0.0;
+    }
+};
 
 // *****************************************************************************
-__global__ void kernel_binary_op(float *out, float *a, float *b, size_t n, BinaryOpMode mode) {
+template<typename Op>
+__global__ void kernel_binary_op(float *out, float *a, float *b, size_t n) {
     size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
     if(idx < n) {
-        switch(mode) {
-        case BinaryOpMode::ADD:
-            out[idx] = a[idx] + b[idx];
-            break;
-        case BinaryOpMode::SUB:
-            out[idx] = a[idx] - b[idx];
-            break;
-        case BinaryOpMode::MUL:
-            out[idx] = a[idx] * b[idx];
-            break;
-        case BinaryOpMode::DIV:
-            out[idx] = a[idx] / b[idx];
-            break;
-        case BinaryOpMode::EQ:
-            out[idx] = a[idx] == b[idx] ? 1.0 : 0.0;
-            break;
-        case BinaryOpMode::LT:
-            out[idx] = a[idx] < b[idx] ? 1.0 : 0.0;
-            break;
-        case BinaryOpMode::LE:
-            out[idx] = a[idx] <= b[idx] ? 1.0 : 0.0;
-            break;
-        case BinaryOpMode::GT:
-            out[idx] = a[idx] > b[idx] ? 1.0 : 0.0;
-            break;
-        case BinaryOpMode::GE:
-            out[idx] = a[idx] >= b[idx] ? 1.0 : 0.0;
-            break;
-        default:
-            break;
-        }
+        out[idx] = Op::apply(a[idx], b[idx]);
     }
 }
 
 
+template<typename Op>
 __global__ void kernel_binary_op(float *out, TensorFormat *out_format, 
         float *a, TensorFormat* a_format, 
         float *b, TensorFormat* b_format,
-        size_t n, BinaryOpMode mode) {
+        size_t n) {
     size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
     
     int indices[TensorFormat::MAX_DIM];
@@ -96,71 +139,22 @@ __global__ void kernel_binary_op(float *out, TensorFormat *out_format,
     }
 
     if(idx < n) {
-        switch(mode) {
-        case BinaryOpMode::ADD:
-            out[idx] = a[idx_a] + b[idx_b];
-            break;
-        case BinaryOpMode::SUB:
-            out[idx] = a[idx_a] - b[idx_b];
-            break;
-        case BinaryOpMode::MUL:
-            out[idx] = a[idx_a] * b[idx_b];
-            break;
-        case BinaryOpMode::DIV:
-            out[idx] = a[idx_a] / b[idx_b];
-            break;
-        case BinaryOpMode::EQ:
-            out[idx] = a[idx_a] == b[idx_b] ? 1.0 : 0.0;
-            break;
-        case BinaryOpMode::LT:
-            out[idx] = a[idx_a] < b[idx_b] ? 1.0 : 0.0;
-            break;
-        case BinaryOpMode::LE:
-            out[idx] = a[idx_a] <= b[idx_b] ? 1.0 : 0.0;
-            break;
-        case BinaryOpMode::GT:
-            out[idx] = a[idx_a] > b[idx_b] ? 1.0 : 0.0;
-            break;
-        case BinaryOpMode::GE:
-            out[idx] = a[idx_a] >= b[idx_b] ? 1.0 : 0.0;
-            break;
-        default:
-            break;
-        }
+        out[idx] = Op::apply(a[idx_a], b[idx_b]);
     }
 }
 
 
-__global__ void kernel_unary_op(float *out, float *in, size_t n, UnaryOpMode mode) {
+template<typename Op>
+__global__ void kernel_unary_op(float *out, float *in, size_t n) {
     size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
     if(idx < n) {
-        switch(mode) {
-        case UnaryOpMode::RELU:
-            out[idx] = in[idx] > 0.0f ? in[idx]: 0.0f;
-            break;
-        case UnaryOpMode::EXP:
-            out[idx] = expf(in[idx]);
-            break;
-        case UnaryOpMode::LOG:
-            out[idx] = logf(in[idx]);
-            break;
-        case UnaryOpMode::SIGMOID:
-            out[idx] = 1.f / (1 + expf(in[idx]));
-            break;
-        case UnaryOpMode::NEG:
-            out[idx] = - in[idx];
-            break;
-        case UnaryOpMode::RECIPROCAL:
-            out[idx] = 1.f / in[idx];
-            break;
-        default:
-            break;
-        }
+        out[idx] = Op::apply(in[idx]);
     }
 }
 
 // *****************************************************************************
-shared_ptr<TensorStorage> binary_op(BinaryOpMode mode, shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
+template<typename Op>
+shared_ptr<TensorStorage> binary_op(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
     bool same_layout = true;
 
     same_layout = same_layout && (x->size() == y->size());
@@ -174,7 +168,7 @@ shared_ptr<TensorStorage> binary_op(BinaryOpMode mode, shared_ptr<TensorStorage>
 
         int block_size = 128;
         int n_block = (x->size() + block_size - 1) / block_size;
-        kernel_binary_op<<<n_block, block_size>>>(res, x->data(), y->data(), x->size(), mode);
+        kernel_binary_op<Op><<<n_block, block_size>>>(res, x->data(), y->data(), x->size());
         cudaError_t err = cudaGetLastError();
         if (err != cudaSuccess) {
             printf("cuda error %s\n", cudaGetErrorString(err));
@@ -247,10 +241,10 @@ shared_ptr<TensorStorage> binary_op(BinaryOpMode mode, shared_ptr<TensorStorage>
         int block_size = 128;
         int n_block = (res_size + block_size - 1) / block_size;
 
-        kernel_binary_op<<<n_block, block_size>>>(res, out_format.get(),
+        kernel_binary_op<Op><<<n_block, block_size>>>(res, out_format.get(),
                 x->data(), x_format.get(),
                 y->data(), y_format.get(),
-                res_size, mode);
+                res_size);
         cudaError_t err = cudaGetLastError();
         if (err != cudaSuccess) {
             printf("cuda error %s\n", cudaGetErrorString(err));
@@ -260,13 +254,14 @@ shared_ptr<TensorStorage> binary_op(BinaryOpMode mode, shared_ptr<TensorStorage>
 }
 
 
-shared_ptr<TensorStorage> unary_op(UnaryOpMode mode, shared_ptr<TensorStorage> x) {
+template<typename Op>
+shared_ptr<TensorStorage> unary_op(shared_ptr<TensorStorage> x) {
     float *res;
     cudaMalloc(&res, sizeof(float) * x->size());
 
     int block_size = 128;
     int n_block = (x->size() + block_size - 1) / block_size;
-    kernel_unary_op<<<n_block, block_size>>>(res, x->data(), x->size(), mode);
+    kernel_unary_op<Op><<<n_block, block_size>>>(res, x->data(), x->size());
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
         printf("cuda error %s\n", cudaGetErrorString(err));
@@ -292,59 +287,59 @@ shared_ptr<TensorStorage> copy_op(shared_ptr<TensorStorage> x) {
 // *****************************************************************************
 
 shared_ptr<TensorStorage> add(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op(BinaryOpMode::ADD, x, y);
+    return binary_op<AddOp>(x, y);
 }
 
 shared_ptr<TensorStorage> sub(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op(BinaryOpMode::SUB, x, y);
+    return binary_op<SubOp>(x, y);
 }
 
 shared_ptr<TensorStorage> mul(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op(BinaryOpMode::MUL, x, y);
+    return binary_op<MulOp>(x, y);
 }
 
 shared_ptr<TensorStorage> div(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op(BinaryOpMode::DIV, x, y);
+    return binary_op<DivOp>(x, y);
 }
 
 shared_ptr<TensorStorage> equal(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op(BinaryOpMode::EQ, x, y);
+    return binary_op<EqualOp>(x, y);
 }
 
 shared_ptr<TensorStorage> less_then(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op(BinaryOpMode::LT, x, y);
+    return binary_op<LessThenOp>(x, y);
 }
 
 shared_ptr<TensorStorage> less_equal(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op(BinaryOpMode::LE, x, y);
+    return binary_op<LessEqualOp>(x, y);
 }
 
 shared_ptr<TensorStorage> greater_then(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op(BinaryOpMode::GT, x, y);
+    return binary_op<GreaterThenOp>(x, y);
 }
 
 shared_ptr<TensorStorage> greater_equal(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op(BinaryOpMode::GE, x, y);
+    return binary_op<GreaterEqualOp>(x, y);
 }
 
 shared_ptr<TensorStorage> relu(shared_ptr<TensorStorage> x) {
-    return unary_op(UnaryOpMode::RELU, x);
+    return unary_op<ReluOp>(x);
 }
 
 shared_ptr<TensorStorage> exp(shared_ptr<TensorStorage> x) {
-    return unary_op(UnaryOpMode::EXP, x);
+    return unary_op<ExpOp>(x);
 }
 
 shared_ptr<TensorStorage> log(shared_ptr<TensorStorage> x) {
-    return unary_op(UnaryOpMode::LOG, x);
+    return unary_op<LogOp>(x);
 }
 
 shared_ptr<TensorStorage> sigmoid(shared_ptr<TensorStorage> x) {
-    return unary_op(UnaryOpMode::SIGMOID, x);
+    return unary_op<SigmoidOp>(x);
 }
 
 shared_ptr<TensorStorage> neg(shared_ptr<TensorStorage> x) {
-    return unary_op(UnaryOpMode::NEG, x);
+    return unary_op<NegOp>(x);
 }
 
 shared_ptr<TensorStorage> copy(shared_ptr<TensorStorage> x) {
@@ -352,23 +347,37 @@ shared_ptr<TensorStorage> copy(shared_ptr<TensorStorage> x) {
 }
 
 shared_ptr<TensorStorage> reciprocal(shared_ptr<TensorStorage> x) {
-    return unary_op(UnaryOpMode::RECIPROCAL, x);
+    return unary_op<ReciprocalOp>(x);
 }
 
 // *****************************************************************************
-struct BinaryOpBackwarFunc: BackwardFunc {
-    BinaryOpMode m_mode;
+struct BinaryOpBackwarFuncBase: BackwardFunc {
     vector<size_t> m_x_shape;
     vector<size_t> m_y_shape;
+    template<typename Op>
     static std::shared_ptr<BackwardFunc> make(
             shared_ptr<GraphNode> x, const vector<size_t> &x_shape,
-            shared_ptr<GraphNode> y, const vector<size_t> &y_shape,
-            BinaryOpMode mode){
-        shared_ptr<BackwardFunc> func = make_shared<BinaryOpBackwarFunc>(mode, x_shape, y_shape);
-        func->m_input_nodes.push_back(x);
-        func->m_input_nodes.push_back(y);
-        return func;
+            shared_ptr<GraphNode> y, const vector<size_t> &y_shape);
+
+    BinaryOpBackwarFuncBase(const vector<size_t> &x_shape, const vector<size_t> &y_shape)
+        : m_x_shape(x_shape), m_y_shape(y_shape) {}
+};
+
+template<typename Op>
+struct BinaryOpBackwarFunc: BinaryOpBackwarFuncBase {
+    BinaryOpBackwarFunc(const vector<size_t> &x_shape, const vector<size_t> &y_shape)
+        :BinaryOpBackwarFuncBase(x_shape, y_shape) {};
+
+    void backward_func(shared_ptr<GraphNode> out_node) override {
+        // FIXME: not implemented for GT GE etc.
     }
+};
+
+
+template<>
+struct BinaryOpBackwarFunc<AddOp>: BinaryOpBackwarFuncBase {
+    BinaryOpBackwarFunc(const vector<size_t> &x_shape, const vector<size_t> &y_shape)
+        :BinaryOpBackwarFuncBase(x_shape, y_shape) {};
 
     void backward_func(shared_ptr<GraphNode> out_node) override {
         // TODO: check shape
@@ -377,154 +386,200 @@ struct BinaryOpBackwarFunc: BackwardFunc {
         assert(out_node->dim() == m_x_shape.size());
         assert(out_node->dim() == m_y_shape.size());
 
-        // fprintf(stderr, "=========================\n");
         for(int i=0; i<out_node->dim(); i++) {
             if(out_node->shape()[i] != m_x_shape[i]) {
-                // fprintf(stderr, "dim %d %zu %zu\n", i, out_node->shape()[i], m_x_shape[i]);
                 assert(m_x_shape[i] == 1);
                 x_reduce_dims.push_back(i);
             }
             if(out_node->shape()[i] != m_y_shape[i]) {
-                // fprintf(stderr, "dim %d %zu %zu\n", i, out_node->shape()[i], m_y_shape[i]);
                 assert(m_y_shape[i] == 1);
                 y_reduce_dims.push_back(i);
             }
         }
         // FIXME: if inputs do not need grad, does not backprop
 
-
-        // fprintf(stderr, "  - X %s\n", to_string(m_x_shape).c_str());
-        // fprintf(stderr, "  - Y %s\n", to_string(m_y_shape).c_str());
-
-        switch(m_mode) {
-            case BinaryOpMode::ADD:
-                // m_input_nodes[0]->acc_grad(out_node->grad_storage());
-                // m_input_nodes[1]->acc_grad(out_node->grad_storage());
-                // fprintf(stderr, "   add\n");
-                if(x_reduce_dims.size()) {
-                    // fprintf(stderr, " backprop with reduction x n=%zu first=%zu\n", x_reduce_dims.size(), x_reduce_dims[0]);
-                    m_input_nodes[0]->acc_grad(
-                            opr::intl::reduce_sum(out_node->grad_storage(), x_reduce_dims, true));
-                } else {
-                    m_input_nodes[0]->acc_grad(out_node->grad_storage());
-                }
-
-                if(y_reduce_dims.size()) {
-                    // fprintf(stderr, " backprop with reduction y n=%zu first=%zu\n", y_reduce_dims.size(), y_reduce_dims[0]);
-                    m_input_nodes[1]->acc_grad(
-                            opr::intl::reduce_sum(out_node->grad_storage(), y_reduce_dims, true));
-                } else {
-                    m_input_nodes[1]->acc_grad(out_node->grad_storage());
-                }
-
-                break;
-            case BinaryOpMode::SUB:
-                // fprintf(stderr, "   sub\n");
-                if(x_reduce_dims.size()) {
-                    // fprintf(stderr, " backprop with reduction x n=%zu first=%zu\n", x_reduce_dims.size(), x_reduce_dims[0]);
-                    m_input_nodes[0]->acc_grad(
-                            opr::intl::reduce_sum(out_node->grad_storage(), x_reduce_dims, true));
-                } else {
-                    m_input_nodes[0]->acc_grad(out_node->grad_storage());
-                }
-
-                if(y_reduce_dims.size()) {
-                    // fprintf(stderr, " backprop with reduction y n=%zu first=%zu\n", y_reduce_dims.size(), y_reduce_dims[0]);
-                    m_input_nodes[1]->acc_grad(
-                            opr::intl::reduce_sum(
-                                unary_op(UnaryOpMode::NEG, out_node->grad_storage()),
-                                y_reduce_dims, true));
-                } else {
-                    m_input_nodes[1]->acc_grad(
-                            unary_op(UnaryOpMode::NEG, out_node->grad_storage()));
-                }
-
-                break;
-            case BinaryOpMode::MUL:
-                // fprintf(stderr, "   mul\n");
-
-                if(x_reduce_dims.size()) {
-                    // fprintf(stderr, " backprop with reduction x n=%zu first=%zu\n", x_reduce_dims.size(), x_reduce_dims[0]);
-                    m_input_nodes[0]->acc_grad(
-                            opr::intl::reduce_sum(
-                                binary_op(BinaryOpMode::MUL, out_node->grad_storage(), m_saved_tensors[1]),
-                                x_reduce_dims, true));
-                } else {
-                    m_input_nodes[0]->acc_grad(
-                            binary_op(BinaryOpMode::MUL,
-                                out_node->grad_storage(),
-                                m_saved_tensors[1]));
-                }
-
-                if(y_reduce_dims.size()) {
-                    // fprintf(stderr, " backprop with reduction y n=%zu first=%zu\n", y_reduce_dims.size(), y_reduce_dims[0]);
-                    m_input_nodes[1]->acc_grad(
-                            opr::intl::reduce_sum(
-                                binary_op(BinaryOpMode::MUL, out_node->grad_storage(), m_saved_tensors[0]),
-                                y_reduce_dims, true));
-                } else {
-                    m_input_nodes[1]->acc_grad(
-                            binary_op(BinaryOpMode::MUL,
-                                out_node->grad_storage(),
-                                m_saved_tensors[0]));
-                }
-                break;
-            case BinaryOpMode::DIV:
-                // fprintf(stderr, "   div\n");
-
-                if(x_reduce_dims.size()) {
-                    // fprintf(stderr, " backprop with reduction x n=%zu first=%zu\n", x_reduce_dims.size(), x_reduce_dims[0]);
-                    m_input_nodes[0]->acc_grad(
-                            opr::intl::reduce_sum(
-                                div(out_node->grad_storage(), m_saved_tensors[1]),
-                                x_reduce_dims, true));
-                } else {
-                    m_input_nodes[0]->acc_grad(
-                            div(out_node->grad_storage(), m_saved_tensors[1]));
-                }
-
-                if(y_reduce_dims.size()) {
-                    // fprintf(stderr, " backprop with reduction y n=%zu first=%zu\n", y_reduce_dims.size(), y_reduce_dims[0]);
-                    m_input_nodes[1]->acc_grad(
-                            opr::intl::reduce_sum(
-                                neg(div(mul(out_node->grad_storage(), m_saved_tensors[0]),
-                                        mul(m_saved_tensors[1], m_saved_tensors[1]))),
-                                y_reduce_dims, true));
-                } else {
-                    m_input_nodes[1]->acc_grad(
-                            neg(div(mul(out_node->grad_storage(), m_saved_tensors[0]),
-                                    mul(m_saved_tensors[1], m_saved_tensors[1]))));
-                }
-
-
-
-                break;
-            default:
-                break;
+        if(x_reduce_dims.size()) {
+            m_input_nodes[0]->acc_grad(
+                    opr::intl::reduce_sum(out_node->grad_storage(), x_reduce_dims, true));
+        } else {
+            m_input_nodes[0]->acc_grad(out_node->grad_storage());
         }
-        // fprintf(stderr, "---------------\n");
-    }
 
-    BinaryOpBackwarFunc(BinaryOpMode mode, const vector<size_t> &x_shape, const vector<size_t> &y_shape)
-        : m_mode(mode), m_x_shape(x_shape), m_y_shape(y_shape) {}
+        if(y_reduce_dims.size()) {
+            m_input_nodes[1]->acc_grad(
+                    opr::intl::reduce_sum(out_node->grad_storage(), y_reduce_dims, true));
+        } else {
+            m_input_nodes[1]->acc_grad(out_node->grad_storage());
+        }
+    }
 };
 
 
-Tensor binary_op(BinaryOpMode mode, Tensor& x, Tensor& y) {
-    Tensor res = Tensor(binary_op(mode, x.storage(), y.storage()));
+template<>
+struct BinaryOpBackwarFunc<SubOp>: BinaryOpBackwarFuncBase {
+    BinaryOpBackwarFunc(const vector<size_t> &x_shape, const vector<size_t> &y_shape)
+        :BinaryOpBackwarFuncBase(x_shape, y_shape) {};
+
+    void backward_func(shared_ptr<GraphNode> out_node) override {
+        // TODO: check shape
+        vector<size_t> x_reduce_dims;
+        vector<size_t> y_reduce_dims;
+        assert(out_node->dim() == m_x_shape.size());
+        assert(out_node->dim() == m_y_shape.size());
+
+        for(int i=0; i<out_node->dim(); i++) {
+            if(out_node->shape()[i] != m_x_shape[i]) {
+                assert(m_x_shape[i] == 1);
+                x_reduce_dims.push_back(i);
+            }
+            if(out_node->shape()[i] != m_y_shape[i]) {
+                assert(m_y_shape[i] == 1);
+                y_reduce_dims.push_back(i);
+            }
+        }
+        // FIXME: if inputs do not need grad, does not backprop
+        if(x_reduce_dims.size()) {
+            m_input_nodes[0]->acc_grad(
+                    opr::intl::reduce_sum(out_node->grad_storage(), x_reduce_dims, true));
+        } else {
+            m_input_nodes[0]->acc_grad(out_node->grad_storage());
+        }
+
+        if(y_reduce_dims.size()) {
+            m_input_nodes[1]->acc_grad(
+                    opr::intl::reduce_sum(
+                        unary_op<NegOp>(out_node->grad_storage()),
+                        y_reduce_dims, true));
+        } else {
+            m_input_nodes[1]->acc_grad(
+                    unary_op<NegOp>(out_node->grad_storage()));
+        }
+
+    }
+};
+
+template<>
+struct BinaryOpBackwarFunc<MulOp>: BinaryOpBackwarFuncBase {
+    BinaryOpBackwarFunc(const vector<size_t> &x_shape, const vector<size_t> &y_shape)
+        :BinaryOpBackwarFuncBase(x_shape, y_shape) {};
+
+    void backward_func(shared_ptr<GraphNode> out_node) override {
+        // TODO: check shape
+        vector<size_t> x_reduce_dims;
+        vector<size_t> y_reduce_dims;
+        assert(out_node->dim() == m_x_shape.size());
+        assert(out_node->dim() == m_y_shape.size());
+
+        for(int i=0; i<out_node->dim(); i++) {
+            if(out_node->shape()[i] != m_x_shape[i]) {
+                assert(m_x_shape[i] == 1);
+                x_reduce_dims.push_back(i);
+            }
+            if(out_node->shape()[i] != m_y_shape[i]) {
+                assert(m_y_shape[i] == 1);
+                y_reduce_dims.push_back(i);
+            }
+        }
+        // FIXME: if inputs do not need grad, does not backprop
+        if(x_reduce_dims.size()) {
+            // fprintf(stderr, " backprop with reduction x n=%zu first=%zu\n", x_reduce_dims.size(), x_reduce_dims[0]);
+            m_input_nodes[0]->acc_grad(
+                    opr::intl::reduce_sum(
+                        binary_op<MulOp>(out_node->grad_storage(), m_saved_tensors[1]),
+                        x_reduce_dims, true));
+        } else {
+            m_input_nodes[0]->acc_grad(
+                    binary_op<MulOp>(out_node->grad_storage(), m_saved_tensors[1]));
+        }
+
+        if(y_reduce_dims.size()) {
+            // fprintf(stderr, " backprop with reduction y n=%zu first=%zu\n", y_reduce_dims.size(), y_reduce_dims[0]);
+            m_input_nodes[1]->acc_grad(
+                    opr::intl::reduce_sum(
+                        binary_op<MulOp>(out_node->grad_storage(), m_saved_tensors[0]),
+                        y_reduce_dims, true));
+        } else {
+            m_input_nodes[1]->acc_grad(
+                    binary_op<MulOp>(out_node->grad_storage(), m_saved_tensors[0]));
+        }
+
+    }
+};
+
+template<>
+struct BinaryOpBackwarFunc<DivOp>: BinaryOpBackwarFuncBase {
+    BinaryOpBackwarFunc(const vector<size_t> &x_shape, const vector<size_t> &y_shape)
+        :BinaryOpBackwarFuncBase(x_shape, y_shape) {};
+
+    void backward_func(shared_ptr<GraphNode> out_node) override {
+        // TODO: check shape
+        vector<size_t> x_reduce_dims;
+        vector<size_t> y_reduce_dims;
+        assert(out_node->dim() == m_x_shape.size());
+        assert(out_node->dim() == m_y_shape.size());
+
+        for(int i=0; i<out_node->dim(); i++) {
+            if(out_node->shape()[i] != m_x_shape[i]) {
+                assert(m_x_shape[i] == 1);
+                x_reduce_dims.push_back(i);
+            }
+            if(out_node->shape()[i] != m_y_shape[i]) {
+                assert(m_y_shape[i] == 1);
+                y_reduce_dims.push_back(i);
+            }
+        }
+        // FIXME: if inputs do not need grad, does not backprop
+        if(x_reduce_dims.size()) {
+            // fprintf(stderr, " backprop with reduction x n=%zu first=%zu\n", x_reduce_dims.size(), x_reduce_dims[0]);
+            m_input_nodes[0]->acc_grad(
+                    opr::intl::reduce_sum(
+                        div(out_node->grad_storage(), m_saved_tensors[1]),
+                        x_reduce_dims, true));
+        } else {
+            m_input_nodes[0]->acc_grad(
+                    div(out_node->grad_storage(), m_saved_tensors[1]));
+        }
+
+        if(y_reduce_dims.size()) {
+            // fprintf(stderr, " backprop with reduction y n=%zu first=%zu\n", y_reduce_dims.size(), y_reduce_dims[0]);
+            m_input_nodes[1]->acc_grad(
+                    opr::intl::reduce_sum(
+                        neg(div(mul(out_node->grad_storage(), m_saved_tensors[0]),
+                                mul(m_saved_tensors[1], m_saved_tensors[1]))),
+                        y_reduce_dims, true));
+        } else {
+            m_input_nodes[1]->acc_grad(
+                    neg(div(mul(out_node->grad_storage(), m_saved_tensors[0]),
+                            mul(m_saved_tensors[1], m_saved_tensors[1]))));
+        }
+
+
+    }
+};
+
+
+template<typename Op>
+std::shared_ptr<BackwardFunc> BinaryOpBackwarFuncBase::make(
+        shared_ptr<GraphNode> x, const vector<size_t> &x_shape,
+        shared_ptr<GraphNode> y, const vector<size_t> &y_shape){
+    shared_ptr<BackwardFunc> func = make_shared<BinaryOpBackwarFunc<Op>>(x_shape, y_shape);
+    func->m_input_nodes.push_back(x);
+    func->m_input_nodes.push_back(y);
+    return func;
+}
+
+
+template<typename Op>
+Tensor binary_op(Tensor& x, Tensor& y) {
+    Tensor res = Tensor(binary_op<Op>(x.storage(), y.storage()));
     if(x.need_grad() || y.need_grad()) {
         shared_ptr<GraphNode> x_node = x.graph_node();
         shared_ptr<GraphNode> y_node = y.graph_node();
         shared_ptr<GraphNode> out_node = res.graph_node();
-        shared_ptr<BackwardFunc> func = BinaryOpBackwarFunc::make(x_node, x.shape(), y_node, y.storage()->shape(), mode);
-        switch(mode) {
-        case BinaryOpMode::MUL:
-        case BinaryOpMode::DIV:
+        shared_ptr<BackwardFunc> func = BinaryOpBackwarFuncBase::make<Op>(x_node, x.shape(), y_node, y.storage()->shape());
+        if(std::is_same<Op, MulOp>::value || std::is_same<Op, DivOp>::value) {
             func->m_saved_tensors.push_back(x.storage());
             func->m_saved_tensors.push_back(y.storage());
-            break;
-        default:
-            break;
         }
         out_node->set_backward_func(func);
     }
@@ -532,7 +587,14 @@ Tensor binary_op(BinaryOpMode mode, Tensor& x, Tensor& y) {
 }
 
 // *****************************************************************************
-struct ReLUBackwardFunc: UnaryBackwardFunc<ReLUBackwardFunc> {
+
+template<typename Op>
+struct UnaryBackwardFuncImpl: UnaryBackwardFunc<UnaryBackwardFuncImpl<Op>> {
+};
+
+
+template<>
+struct UnaryBackwardFuncImpl<ReluOp>: UnaryBackwardFunc<UnaryBackwardFuncImpl<ReluOp>> {
     void backward_func(shared_ptr<GraphNode> out_node) override {
         shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
         shared_ptr<TensorStorage> inp = m_saved_tensors[0];
@@ -541,7 +603,8 @@ struct ReLUBackwardFunc: UnaryBackwardFunc<ReLUBackwardFunc> {
     }
 };
 
-struct ExpBackwardFunc: UnaryBackwardFunc<ExpBackwardFunc> {
+template<>
+struct UnaryBackwardFuncImpl<ExpOp>: UnaryBackwardFunc<UnaryBackwardFuncImpl<ExpOp>> {
     void backward_func(shared_ptr<GraphNode> out_node) override {
         shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
         shared_ptr<TensorStorage> out = m_saved_tensors[0];
@@ -550,7 +613,8 @@ struct ExpBackwardFunc: UnaryBackwardFunc<ExpBackwardFunc> {
     }
 };
 
-struct LogBackwardFunc: UnaryBackwardFunc<LogBackwardFunc> {
+template<>
+struct UnaryBackwardFuncImpl<LogOp>: UnaryBackwardFunc<UnaryBackwardFuncImpl<LogOp>> {
     void backward_func(shared_ptr<GraphNode> out_node) override {
         shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
         shared_ptr<TensorStorage> inp = m_saved_tensors[0];
@@ -559,7 +623,8 @@ struct LogBackwardFunc: UnaryBackwardFunc<LogBackwardFunc> {
     }
 };
 
-struct SigmoidBackwardFunc: UnaryBackwardFunc<SigmoidBackwardFunc> {
+template<>
+struct UnaryBackwardFuncImpl<SigmoidOp>: UnaryBackwardFunc<UnaryBackwardFuncImpl<SigmoidOp>> {
     void backward_func(shared_ptr<GraphNode> out_node) override {
         shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
         shared_ptr<TensorStorage> inp = m_saved_tensors[0];
@@ -568,7 +633,8 @@ struct SigmoidBackwardFunc: UnaryBackwardFunc<SigmoidBackwardFunc> {
     }
 };
 
-struct NegBackwardFunc: UnaryBackwardFunc<NegBackwardFunc> {
+template<>
+struct UnaryBackwardFuncImpl<NegOp>: UnaryBackwardFunc<UnaryBackwardFuncImpl<NegOp>> {
     void backward_func(shared_ptr<GraphNode> out_node) override {
         shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
         shared_ptr<TensorStorage> res = neg(out_grad);
@@ -576,14 +642,16 @@ struct NegBackwardFunc: UnaryBackwardFunc<NegBackwardFunc> {
     }
 };
 
-struct CopyBackwardFunc: UnaryBackwardFunc<CopyBackwardFunc> {
+template<>
+struct UnaryBackwardFuncImpl<CopyOp>: UnaryBackwardFunc<UnaryBackwardFuncImpl<CopyOp>> {
     void backward_func(shared_ptr<GraphNode> out_node) override {
         shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
         m_input_nodes[0]->acc_grad(out_grad);
     }
 };
 
-struct ReciprocalBackwardFunc: UnaryBackwardFunc<ReciprocalBackwardFunc> {
+template<>
+struct UnaryBackwardFuncImpl<ReciprocalOp>: UnaryBackwardFunc<UnaryBackwardFuncImpl<ReciprocalOp>> {
     void backward_func(shared_ptr<GraphNode> out_node) override {
         shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
         shared_ptr<TensorStorage> inp = m_saved_tensors[0];
@@ -592,44 +660,34 @@ struct ReciprocalBackwardFunc: UnaryBackwardFunc<ReciprocalBackwardFunc> {
     }
 };
 
-Tensor unary_op(UnaryOpMode mode, Tensor& x) {
-    if(mode == UnaryOpMode::COPY)
-        return copy_op(x.storage());
-    Tensor res = Tensor(unary_op(mode, x.storage()));
+
+template<typename Op>
+Tensor unary_op(Tensor& x) {
+    Tensor res;
+    if(std::is_same<Op, CopyOp>::value) {
+        res = Tensor(copy_op(x.storage()));
+    } else {
+        res = Tensor(unary_op<Op>(x.storage()));
+    }
+
     if(x.need_grad()) {
         shared_ptr<GraphNode> out_node = res.graph_node();
         shared_ptr<GraphNode> x_node = x.graph_node();
         shared_ptr<BackwardFunc> func;
-        switch(mode) {
-        case UnaryOpMode::RELU:
-            func = ReLUBackwardFunc::make(x_node);
+
+        if(std::is_same<Op, ReluOp>::value ||
+                std::is_same<Op, LogOp>::value ||
+                std::is_same<Op, SigmoidOp>::value ||
+                std::is_same<Op, ReciprocalOp>::value) {
+            func = UnaryBackwardFuncImpl<Op>::make(x_node);
             func->m_saved_tensors.push_back(x.storage());
-            break;
-        case UnaryOpMode::EXP:
-            func = ExpBackwardFunc::make(x_node);
+        } else if(std::is_same<Op, ExpOp>::value) {
+            func = UnaryBackwardFuncImpl<Op>::make(x_node);
             func->m_saved_tensors.push_back(res.storage());
-            break;
-        case UnaryOpMode::LOG:
-            func = LogBackwardFunc::make(x_node);
-            func->m_saved_tensors.push_back(x.storage());
-            break;
-        case UnaryOpMode::SIGMOID:
-            func = SigmoidBackwardFunc::make(x_node);
-            func->m_saved_tensors.push_back(x.storage());
-            break;
-        case UnaryOpMode::NEG:
-            func = NegBackwardFunc::make(x_node);
-            break;
-        case UnaryOpMode::COPY:
-            func = CopyBackwardFunc::make(x_node);
-            break;
-        case UnaryOpMode::RECIPROCAL:
-            func = ReciprocalBackwardFunc::make(x_node);
-            func->m_saved_tensors.push_back(x.storage());
-            break;
-        default:
-            break;
+        } else {
+            func = UnaryBackwardFuncImpl<Op>::make(x_node);
         }
+
         out_node->set_backward_func(func);
     }
     return res;
@@ -639,59 +697,59 @@ Tensor unary_op(UnaryOpMode mode, Tensor& x) {
 // *****************************************************************************
 namespace opr {
 Tensor add(Tensor& x, Tensor& y) {
-    return binary_op(BinaryOpMode::ADD, x, y);
+    return binary_op<AddOp>(x, y);
 }
 
 Tensor sub(Tensor& x, Tensor& y) {
-    return binary_op(BinaryOpMode::SUB, x, y);
+    return binary_op<SubOp>(x, y);
 }
 
 Tensor mul(Tensor& x, Tensor& y) {
-    return binary_op(BinaryOpMode::MUL, x, y);
+    return binary_op<MulOp>(x, y);
 }
 
 Tensor div(Tensor& x, Tensor& y) {
-    return binary_op(BinaryOpMode::DIV, x, y);
+    return binary_op<DivOp>(x, y);
 }
 
 Tensor equal(Tensor& x, Tensor& y) {
-    return binary_op(BinaryOpMode::EQ, x, y);
+    return binary_op<EqualOp>(x, y);
 }
 
 Tensor less_then(Tensor& x, Tensor& y) {
-    return binary_op(BinaryOpMode::LT, x, y);
+    return binary_op<LessThenOp>(x, y);
 }
 
 Tensor less_equal(Tensor& x, Tensor& y) {
-    return binary_op(BinaryOpMode::LE, x, y);
+    return binary_op<LessEqualOp>(x, y);
 }
 
 Tensor greater_then(Tensor& x, Tensor& y) {
-    return binary_op(BinaryOpMode::GT, x, y);
+    return binary_op<GreaterThenOp>(x, y);
 }
 
 Tensor greater_equal(Tensor& x, Tensor& y) {
-    return binary_op(BinaryOpMode::GE, x, y);
+    return binary_op<GreaterEqualOp>(x, y);
 }
 
 Tensor relu(Tensor& x) {
-    return unary_op(UnaryOpMode::RELU, x);
+    return unary_op<ReluOp>(x);
 }
 
 Tensor log(Tensor& x) {
-    return unary_op(UnaryOpMode::LOG, x);
+    return unary_op<LogOp>(x);
 }
 
 Tensor exp(Tensor& x) {
-    return unary_op(UnaryOpMode::EXP, x);
+    return unary_op<ExpOp>(x);
 }
 
 Tensor sigmoid(Tensor& x) {
-    return unary_op(UnaryOpMode::SIGMOID, x);
+    return unary_op<SigmoidOp>(x);
 }
 
 Tensor copy(Tensor& x) {
-    return unary_op(UnaryOpMode::COPY, x);
+    return unary_op<CopyOp>(x);
 }
 
 namespace intl {
