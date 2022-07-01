@@ -3,106 +3,155 @@
 #include "elementwise.h"
 #include "reduction.h"
 #include "opr_utils.h"
+#include "dtype.h"
 
 using namespace std;
 
 struct BinaryOpBackwarFuncBase;
 
 // *****************************************************************************
+template<typename DT>
 struct ReluOp {
-    static __device__ __forceinline__ float apply(float x) {
-        return x > 0.0f ? x: 0.0f;
+    using DType = DT;
+    using T = typename DT::T;
+    static __device__ __forceinline__ T apply(T x) {
+        return x > DT::one() ? x: DT::zero();
     }
 };
 
+template<typename DT>
 struct ExpOp {
-    static __device__ __forceinline__ float apply(float x) {
-        return expf(x);
+    using DType = DT;
+    using T = typename DT::T;
+    static __device__ __forceinline__ T apply(T x) {
+        return DT::exp(x);
     }
 };
 
+template<typename DT>
 struct LogOp {
-    static __device__ __forceinline__ float apply(float x) {
-        return logf(x);
+    using DType = DT;
+    using T = typename DT::T;
+    static __device__ __forceinline__ T apply(T x) {
+        return DT::log(x);
     }
 };
 
+template<typename DT>
 struct SigmoidOp {
-    static __device__ __forceinline__ float apply(float x) {
-        return 1.f / (1.f + expf(x));
+    using DType = DT;
+    using T = typename DT::T;
+    static __device__ __forceinline__ T apply(T x) {
+        return DT::one() / (DT::one() + DT::exp(x));
     }
 };
 
+template<typename DT>
 struct NegOp {
-    static __device__ __forceinline__ float apply(float x) {
+    using DType = DT;
+    using T = typename DT::T;
+    static __device__ __forceinline__ T apply(T x) {
         return -x;
     }
 };
 
+template<typename DT>
 struct CopyOp {
-    static __device__ __forceinline__ float apply(float x) {
+    using DType = DT;
+    using T = typename DT::T;
+    static __device__ __forceinline__ T apply(T x) {
         return x;
     }
 };
 
+template<typename DT>
 struct ReciprocalOp {
-    static __device__ __forceinline__ float apply(float x) {
-        return 1.f / x;
+    using DType = DT;
+    using T = typename DT::T;
+    static __device__ __forceinline__ T apply(T x) {
+        return DT::one() / x;
     }
 };
 
 
+template<typename DT>
 struct AddOp {
-    static __device__ __forceinline__ float apply(float lhs, float rhs) {
+    using DType = DT;
+    using T = typename DT::T;
+    static __device__ __forceinline__ T apply(T lhs, T rhs) {
         return lhs + rhs;
     }
 };
 
+template<typename DT>
 struct SubOp {
-    static __device__ __forceinline__ float apply(float lhs, float rhs) {
+    using DType = DT;
+    using T = typename DT::T;
+    static __device__ __forceinline__ T apply(T lhs, T rhs) {
         return lhs - rhs;
     }
 };
 
+template<typename DT>
 struct MulOp {
-    static __device__ __forceinline__ float apply(float lhs, float rhs) {
+    using DType = DT;
+    using T = typename DT::T;
+    static __device__ __forceinline__ T apply(T lhs, T rhs) {
         return lhs * rhs;
     }
 };
 
+template<typename DT>
 struct DivOp {
-    static __device__ __forceinline__ float apply(float lhs, float rhs) {
+    using DType = DT;
+    using T = typename DT::T;
+    static __device__ __forceinline__ T apply(T lhs, T rhs) {
         return lhs / rhs;
     }
 };
 
+template<typename DT>
 struct EqualOp {
-    static __device__ __forceinline__ float apply(float lhs, float rhs) {
-        return lhs == rhs ? 1.0: 0.0;
+    using DType = DT;
+    using T = typename DT::T;
+    static __device__ __forceinline__ T apply(T lhs, T rhs) {
+        return lhs == rhs ? DT::one(): DT::zero();
     }
 };
 
+template<typename DT>
 struct LessThenOp {
-    static __device__ __forceinline__ float apply(float lhs, float rhs) {
-        return lhs < rhs ? 1.0: 0.0;
+    using DType = DT;
+    using T = typename DT::T;
+    static __device__ __forceinline__ T apply(T lhs, T rhs) {
+        return lhs < rhs ? DT::one(): DT::zero();
     }
 };
 
+template<typename DT>
 struct LessEqualOp {
-    static __device__ __forceinline__ float apply(float lhs, float rhs) {
-        return lhs <= rhs ? 1.0: 0.0;
+    using DType = DT;
+    using T = typename DT::T;
+    static __device__ __forceinline__ T apply(T lhs, T rhs) {
+        return lhs <= rhs ? DT::one(): DT::zero();
     }
 };
 
+template<typename DT>
 struct GreaterThenOp {
-    static __device__ __forceinline__ float apply(float lhs, float rhs) {
-        return lhs > rhs ? 1.0: 0.0;
+    using DType = DT;
+    using T = typename DT::T;
+    static __device__ __forceinline__ T apply(T lhs, T rhs) {
+        return lhs > rhs ? DT::one(): DT::zero();
     }
 };
 
+template<typename DT>
 struct GreaterEqualOp {
-    static __device__ __forceinline__ float apply(float lhs, float rhs) {
-        return lhs >= rhs ? 1.0: 0.0;
+    using DType = DT;
+    using T = typename DT::T;
+    static __device__ __forceinline__ T apply(T lhs, T rhs) {
+        return lhs >= rhs ? DT::one(): DT::zero();
     }
 };
 
@@ -287,59 +336,59 @@ shared_ptr<TensorStorage> copy_op(shared_ptr<TensorStorage> x) {
 // *****************************************************************************
 
 shared_ptr<TensorStorage> add(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op<AddOp>(x, y);
+    return binary_op<AddOp<Float32>>(x, y);
 }
 
 shared_ptr<TensorStorage> sub(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op<SubOp>(x, y);
+    return binary_op<SubOp<Float32>>(x, y);
 }
 
 shared_ptr<TensorStorage> mul(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op<MulOp>(x, y);
+    return binary_op<MulOp<Float32>>(x, y);
 }
 
 shared_ptr<TensorStorage> div(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op<DivOp>(x, y);
+    return binary_op<DivOp<Float32>>(x, y);
 }
 
 shared_ptr<TensorStorage> equal(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op<EqualOp>(x, y);
+    return binary_op<EqualOp<Float32>>(x, y);
 }
 
 shared_ptr<TensorStorage> less_then(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op<LessThenOp>(x, y);
+    return binary_op<LessThenOp<Float32>>(x, y);
 }
 
 shared_ptr<TensorStorage> less_equal(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op<LessEqualOp>(x, y);
+    return binary_op<LessEqualOp<Float32>>(x, y);
 }
 
 shared_ptr<TensorStorage> greater_then(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op<GreaterThenOp>(x, y);
+    return binary_op<GreaterThenOp<Float32>>(x, y);
 }
 
 shared_ptr<TensorStorage> greater_equal(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op<GreaterEqualOp>(x, y);
+    return binary_op<GreaterEqualOp<Float32>>(x, y);
 }
 
 shared_ptr<TensorStorage> relu(shared_ptr<TensorStorage> x) {
-    return unary_op<ReluOp>(x);
+    return unary_op<ReluOp<Float32>>(x);
 }
 
 shared_ptr<TensorStorage> exp(shared_ptr<TensorStorage> x) {
-    return unary_op<ExpOp>(x);
+    return unary_op<ExpOp<Float32>>(x);
 }
 
 shared_ptr<TensorStorage> log(shared_ptr<TensorStorage> x) {
-    return unary_op<LogOp>(x);
+    return unary_op<LogOp<Float32>>(x);
 }
 
 shared_ptr<TensorStorage> sigmoid(shared_ptr<TensorStorage> x) {
-    return unary_op<SigmoidOp>(x);
+    return unary_op<SigmoidOp<Float32>>(x);
 }
 
 shared_ptr<TensorStorage> neg(shared_ptr<TensorStorage> x) {
-    return unary_op<NegOp>(x);
+    return unary_op<NegOp<Float32>>(x);
 }
 
 shared_ptr<TensorStorage> copy(shared_ptr<TensorStorage> x) {
@@ -347,7 +396,7 @@ shared_ptr<TensorStorage> copy(shared_ptr<TensorStorage> x) {
 }
 
 shared_ptr<TensorStorage> reciprocal(shared_ptr<TensorStorage> x) {
-    return unary_op<ReciprocalOp>(x);
+    return unary_op<ReciprocalOp<Float32>>(x);
 }
 
 // *****************************************************************************
@@ -363,7 +412,7 @@ struct BinaryOpBackwarFuncBase: BackwardFunc {
         : m_x_shape(x_shape), m_y_shape(y_shape) {}
 };
 
-template<typename Op>
+template<typename DT, typename Op>
 struct BinaryOpBackwarFunc: BinaryOpBackwarFuncBase {
     BinaryOpBackwarFunc(const vector<size_t> &x_shape, const vector<size_t> &y_shape)
         :BinaryOpBackwarFuncBase(x_shape, y_shape) {};
@@ -374,8 +423,8 @@ struct BinaryOpBackwarFunc: BinaryOpBackwarFuncBase {
 };
 
 
-template<>
-struct BinaryOpBackwarFunc<AddOp>: BinaryOpBackwarFuncBase {
+template<typename DT>
+struct BinaryOpBackwarFunc<DT, AddOp<DT>>: BinaryOpBackwarFuncBase {
     BinaryOpBackwarFunc(const vector<size_t> &x_shape, const vector<size_t> &y_shape)
         :BinaryOpBackwarFuncBase(x_shape, y_shape) {};
 
@@ -415,8 +464,8 @@ struct BinaryOpBackwarFunc<AddOp>: BinaryOpBackwarFuncBase {
 };
 
 
-template<>
-struct BinaryOpBackwarFunc<SubOp>: BinaryOpBackwarFuncBase {
+template<typename DT>
+struct BinaryOpBackwarFunc<DT, SubOp<DT>>: BinaryOpBackwarFuncBase {
     BinaryOpBackwarFunc(const vector<size_t> &x_shape, const vector<size_t> &y_shape)
         :BinaryOpBackwarFuncBase(x_shape, y_shape) {};
 
@@ -448,18 +497,18 @@ struct BinaryOpBackwarFunc<SubOp>: BinaryOpBackwarFuncBase {
         if(y_reduce_dims.size()) {
             m_input_nodes[1]->acc_grad(
                     opr::intl::reduce_sum(
-                        unary_op<NegOp>(out_node->grad_storage()),
+                        unary_op<NegOp<DT>>(out_node->grad_storage()),
                         y_reduce_dims, true));
         } else {
             m_input_nodes[1]->acc_grad(
-                    unary_op<NegOp>(out_node->grad_storage()));
+                    unary_op<NegOp<DT>>(out_node->grad_storage()));
         }
 
     }
 };
 
-template<>
-struct BinaryOpBackwarFunc<MulOp>: BinaryOpBackwarFuncBase {
+template<typename DT>
+struct BinaryOpBackwarFunc<DT, MulOp<DT>>: BinaryOpBackwarFuncBase {
     BinaryOpBackwarFunc(const vector<size_t> &x_shape, const vector<size_t> &y_shape)
         :BinaryOpBackwarFuncBase(x_shape, y_shape) {};
 
@@ -485,29 +534,29 @@ struct BinaryOpBackwarFunc<MulOp>: BinaryOpBackwarFuncBase {
             // fprintf(stderr, " backprop with reduction x n=%zu first=%zu\n", x_reduce_dims.size(), x_reduce_dims[0]);
             m_input_nodes[0]->acc_grad(
                     opr::intl::reduce_sum(
-                        binary_op<MulOp>(out_node->grad_storage(), m_saved_tensors[1]),
+                        binary_op<MulOp<DT>>(out_node->grad_storage(), m_saved_tensors[1]),
                         x_reduce_dims, true));
         } else {
             m_input_nodes[0]->acc_grad(
-                    binary_op<MulOp>(out_node->grad_storage(), m_saved_tensors[1]));
+                    binary_op<MulOp<DT>>(out_node->grad_storage(), m_saved_tensors[1]));
         }
 
         if(y_reduce_dims.size()) {
             // fprintf(stderr, " backprop with reduction y n=%zu first=%zu\n", y_reduce_dims.size(), y_reduce_dims[0]);
             m_input_nodes[1]->acc_grad(
                     opr::intl::reduce_sum(
-                        binary_op<MulOp>(out_node->grad_storage(), m_saved_tensors[0]),
+                        binary_op<MulOp<DT>>(out_node->grad_storage(), m_saved_tensors[0]),
                         y_reduce_dims, true));
         } else {
             m_input_nodes[1]->acc_grad(
-                    binary_op<MulOp>(out_node->grad_storage(), m_saved_tensors[0]));
+                    binary_op<MulOp<DT>>(out_node->grad_storage(), m_saved_tensors[0]));
         }
 
     }
 };
 
-template<>
-struct BinaryOpBackwarFunc<DivOp>: BinaryOpBackwarFuncBase {
+template<typename DT>
+struct BinaryOpBackwarFunc<DT, DivOp<DT>>: BinaryOpBackwarFuncBase {
     BinaryOpBackwarFunc(const vector<size_t> &x_shape, const vector<size_t> &y_shape)
         :BinaryOpBackwarFuncBase(x_shape, y_shape) {};
 
@@ -562,7 +611,8 @@ template<typename Op>
 std::shared_ptr<BackwardFunc> BinaryOpBackwarFuncBase::make(
         shared_ptr<GraphNode> x, const vector<size_t> &x_shape,
         shared_ptr<GraphNode> y, const vector<size_t> &y_shape){
-    shared_ptr<BackwardFunc> func = make_shared<BinaryOpBackwarFunc<Op>>(x_shape, y_shape);
+    using DType = typename Op::DType;
+    shared_ptr<BackwardFunc> func = make_shared<BinaryOpBackwarFunc<DType, Op>>(x_shape, y_shape);
     func->m_input_nodes.push_back(x);
     func->m_input_nodes.push_back(y);
     return func;
@@ -577,7 +627,8 @@ Tensor binary_op(Tensor& x, Tensor& y) {
         shared_ptr<GraphNode> y_node = y.graph_node();
         shared_ptr<GraphNode> out_node = res.graph_node();
         shared_ptr<BackwardFunc> func = BinaryOpBackwarFuncBase::make<Op>(x_node, x.shape(), y_node, y.storage()->shape());
-        if(std::is_same<Op, MulOp>::value || std::is_same<Op, DivOp>::value) {
+        using DType = typename Op::DType;
+        if(std::is_same<Op, MulOp<DType>>::value || std::is_same<Op, DivOp<DType>>::value) {
             func->m_saved_tensors.push_back(x.storage());
             func->m_saved_tensors.push_back(y.storage());
         }
@@ -587,14 +638,32 @@ Tensor binary_op(Tensor& x, Tensor& y) {
 }
 
 // *****************************************************************************
+struct UnaryBackwardFuncBase;
+template<typename DT, typename Opr>
+struct UnaryBackwardFuncImpl;
 
-template<typename Op>
-struct UnaryBackwardFuncImpl: UnaryBackwardFunc<UnaryBackwardFuncImpl<Op>> {
+
+
+struct UnaryBackwardFuncBase: BackwardFunc {
+    template<typename Op>
+    static std::shared_ptr<BackwardFunc> make(shared_ptr<GraphNode> x){
+        using DType = typename Op::DType;
+        shared_ptr<BackwardFunc> func = make_shared<UnaryBackwardFuncImpl<DType, Op>>();
+        func->m_input_nodes.push_back(x);
+        return func;
+    }
+    void backward_func(shared_ptr<GraphNode> out_node) {
+    }
 };
 
 
-template<>
-struct UnaryBackwardFuncImpl<ReluOp>: UnaryBackwardFunc<UnaryBackwardFuncImpl<ReluOp>> {
+template<typename DT, typename Opr>
+struct UnaryBackwardFuncImpl: UnaryBackwardFuncBase {
+};
+
+
+template<typename DT>
+struct UnaryBackwardFuncImpl<DT, ReluOp<DT>>: UnaryBackwardFuncBase {
     void backward_func(shared_ptr<GraphNode> out_node) override {
         shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
         shared_ptr<TensorStorage> inp = m_saved_tensors[0];
@@ -603,8 +672,8 @@ struct UnaryBackwardFuncImpl<ReluOp>: UnaryBackwardFunc<UnaryBackwardFuncImpl<Re
     }
 };
 
-template<>
-struct UnaryBackwardFuncImpl<ExpOp>: UnaryBackwardFunc<UnaryBackwardFuncImpl<ExpOp>> {
+template<typename DT>
+struct UnaryBackwardFuncImpl<DT, ExpOp<DT>>: UnaryBackwardFuncBase {
     void backward_func(shared_ptr<GraphNode> out_node) override {
         shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
         shared_ptr<TensorStorage> out = m_saved_tensors[0];
@@ -613,8 +682,8 @@ struct UnaryBackwardFuncImpl<ExpOp>: UnaryBackwardFunc<UnaryBackwardFuncImpl<Exp
     }
 };
 
-template<>
-struct UnaryBackwardFuncImpl<LogOp>: UnaryBackwardFunc<UnaryBackwardFuncImpl<LogOp>> {
+template<typename DT>
+struct UnaryBackwardFuncImpl<DT, LogOp<DT>>: UnaryBackwardFuncBase {
     void backward_func(shared_ptr<GraphNode> out_node) override {
         shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
         shared_ptr<TensorStorage> inp = m_saved_tensors[0];
@@ -623,8 +692,8 @@ struct UnaryBackwardFuncImpl<LogOp>: UnaryBackwardFunc<UnaryBackwardFuncImpl<Log
     }
 };
 
-template<>
-struct UnaryBackwardFuncImpl<SigmoidOp>: UnaryBackwardFunc<UnaryBackwardFuncImpl<SigmoidOp>> {
+template<typename DT>
+struct UnaryBackwardFuncImpl<DT, SigmoidOp<DT>>: UnaryBackwardFuncBase {
     void backward_func(shared_ptr<GraphNode> out_node) override {
         shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
         shared_ptr<TensorStorage> inp = m_saved_tensors[0];
@@ -633,8 +702,8 @@ struct UnaryBackwardFuncImpl<SigmoidOp>: UnaryBackwardFunc<UnaryBackwardFuncImpl
     }
 };
 
-template<>
-struct UnaryBackwardFuncImpl<NegOp>: UnaryBackwardFunc<UnaryBackwardFuncImpl<NegOp>> {
+template<typename DT>
+struct UnaryBackwardFuncImpl<DT, NegOp<DT>>: UnaryBackwardFuncBase {
     void backward_func(shared_ptr<GraphNode> out_node) override {
         shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
         shared_ptr<TensorStorage> res = neg(out_grad);
@@ -642,16 +711,16 @@ struct UnaryBackwardFuncImpl<NegOp>: UnaryBackwardFunc<UnaryBackwardFuncImpl<Neg
     }
 };
 
-template<>
-struct UnaryBackwardFuncImpl<CopyOp>: UnaryBackwardFunc<UnaryBackwardFuncImpl<CopyOp>> {
+template<typename DT>
+struct UnaryBackwardFuncImpl<DT, CopyOp<DT>>: UnaryBackwardFuncBase {
     void backward_func(shared_ptr<GraphNode> out_node) override {
         shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
         m_input_nodes[0]->acc_grad(out_grad);
     }
 };
 
-template<>
-struct UnaryBackwardFuncImpl<ReciprocalOp>: UnaryBackwardFunc<UnaryBackwardFuncImpl<ReciprocalOp>> {
+template<typename DT>
+struct UnaryBackwardFuncImpl<DT, ReciprocalOp<DT>>: UnaryBackwardFuncBase {
     void backward_func(shared_ptr<GraphNode> out_node) override {
         shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
         shared_ptr<TensorStorage> inp = m_saved_tensors[0];
@@ -661,10 +730,84 @@ struct UnaryBackwardFuncImpl<ReciprocalOp>: UnaryBackwardFunc<UnaryBackwardFuncI
 };
 
 
+// template<typename DT, typename Opr>
+// struct UnaryBackwardFuncImpl: UnaryBackwardFunc<UnaryBackwardFuncImpl<DT, Opr>> {
+// };
+//
+//
+// template<typename DT>
+// struct UnaryBackwardFuncImpl<DT, ReluOp<DT>>: UnaryBackwardFunc<UnaryBackwardFuncImpl<DT, ReluOp<DT>>> {
+//     void backward_func(shared_ptr<GraphNode> out_node) override {
+//         shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
+//         shared_ptr<TensorStorage> inp = m_saved_tensors[0];
+//         // shared_ptr<TensorStorage> res = mul(greater_then(inp, Tensor::get_const(0.).storage()), out_grad);
+//         // m_input_nodes[0]->acc_grad(res);
+//     }
+// };
+//
+// template<typename DT>
+// struct UnaryBackwardFuncImpl<DT, ExpOp<DT>>: UnaryBackwardFunc<UnaryBackwardFuncImpl<DT, ExpOp<DT>>> {
+//     void backward_func(shared_ptr<GraphNode> out_node) override {
+//         // shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
+//         // shared_ptr<TensorStorage> out = m_saved_tensors[0];
+//         // shared_ptr<TensorStorage> res = mul(out, out_grad);
+//         // m_input_nodes[0]->acc_grad(res);
+//     }
+// };
+//
+// template<typename DT>
+// struct UnaryBackwardFuncImpl<DT, LogOp<DT>>: UnaryBackwardFunc<UnaryBackwardFuncImpl<DT, LogOp<DT>>> {
+//     void backward_func(shared_ptr<GraphNode> out_node) override {
+//         // shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
+//         // shared_ptr<TensorStorage> inp = m_saved_tensors[0];
+//         // shared_ptr<TensorStorage> res = mul(reciprocal(inp), out_grad);
+//         // m_input_nodes[0]->acc_grad(res);
+//     }
+// };
+//
+// template<typename DT>
+// struct UnaryBackwardFuncImpl<DT, SigmoidOp<DT>>: UnaryBackwardFunc<UnaryBackwardFuncImpl<DT, SigmoidOp<DT>>> {
+//     void backward_func(shared_ptr<GraphNode> out_node) override {
+//         // shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
+//         // shared_ptr<TensorStorage> inp = m_saved_tensors[0];
+//         // shared_ptr<TensorStorage> res = mul(mul(sigmoid(inp), sigmoid(neg(inp))), out_grad);
+//         // m_input_nodes[0]->acc_grad(res);
+//     }
+// };
+//
+// template<typename DT>
+// struct UnaryBackwardFuncImpl<DT, NegOp<DT>>: UnaryBackwardFunc<UnaryBackwardFuncImpl<DT, NegOp<DT>>> {
+//     void backward_func(shared_ptr<GraphNode> out_node) override {
+//         // shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
+//         // shared_ptr<TensorStorage> res = neg(out_grad);
+//         // m_input_nodes[0]->acc_grad(res);
+//     }
+// };
+//
+// template<typename DT>
+// struct UnaryBackwardFuncImpl<DT, CopyOp<DT>>: UnaryBackwardFunc<UnaryBackwardFuncImpl<DT, CopyOp<DT>>> {
+//     void backward_func(shared_ptr<GraphNode> out_node) override {
+//         // shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
+//         // m_input_nodes[0]->acc_grad(out_grad);
+//     }
+// };
+//
+// template<typename DT>
+// struct UnaryBackwardFuncImpl<DT, ReciprocalOp<DT>>: UnaryBackwardFunc<UnaryBackwardFuncImpl<DT, ReciprocalOp<DT>>> {
+//     void backward_func(shared_ptr<GraphNode> out_node) override {
+//         // shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
+//         // shared_ptr<TensorStorage> inp = m_saved_tensors[0];
+//         // shared_ptr<TensorStorage> res = neg(reciprocal(mul(inp, inp)));
+//         // m_input_nodes[0]->acc_grad(res);
+//     }
+// };
+
+
 template<typename Op>
 Tensor unary_op(Tensor& x) {
+    using DType = typename Op::DType;
     Tensor res;
-    if(std::is_same<Op, CopyOp>::value) {
+    if(std::is_same<Op, CopyOp<DType>>::value) {
         res = Tensor(copy_op(x.storage()));
     } else {
         res = Tensor(unary_op<Op>(x.storage()));
@@ -675,17 +818,17 @@ Tensor unary_op(Tensor& x) {
         shared_ptr<GraphNode> x_node = x.graph_node();
         shared_ptr<BackwardFunc> func;
 
-        if(std::is_same<Op, ReluOp>::value ||
-                std::is_same<Op, LogOp>::value ||
-                std::is_same<Op, SigmoidOp>::value ||
-                std::is_same<Op, ReciprocalOp>::value) {
-            func = UnaryBackwardFuncImpl<Op>::make(x_node);
+        if(std::is_same<Op, ReluOp<DType>>::value ||
+                std::is_same<Op, LogOp<DType>>::value ||
+                std::is_same<Op, SigmoidOp<DType>>::value ||
+                std::is_same<Op, ReciprocalOp<DType>>::value) {
+            func = UnaryBackwardFuncBase::make<Op>(x_node);
             func->m_saved_tensors.push_back(x.storage());
-        } else if(std::is_same<Op, ExpOp>::value) {
-            func = UnaryBackwardFuncImpl<Op>::make(x_node);
+        } else if(std::is_same<Op, ExpOp<DType>>::value) {
+            func = UnaryBackwardFuncBase::make<Op>(x_node);
             func->m_saved_tensors.push_back(res.storage());
         } else {
-            func = UnaryBackwardFuncImpl<Op>::make(x_node);
+            func = UnaryBackwardFuncBase::make<Op>(x_node);
         }
 
         out_node->set_backward_func(func);
@@ -697,59 +840,59 @@ Tensor unary_op(Tensor& x) {
 // *****************************************************************************
 namespace opr {
 Tensor add(Tensor& x, Tensor& y) {
-    return binary_op<AddOp>(x, y);
+    return binary_op<AddOp<Float32>>(x, y);
 }
 
 Tensor sub(Tensor& x, Tensor& y) {
-    return binary_op<SubOp>(x, y);
+    return binary_op<SubOp<Float32>>(x, y);
 }
 
 Tensor mul(Tensor& x, Tensor& y) {
-    return binary_op<MulOp>(x, y);
+    return binary_op<MulOp<Float32>>(x, y);
 }
 
 Tensor div(Tensor& x, Tensor& y) {
-    return binary_op<DivOp>(x, y);
+    return binary_op<DivOp<Float32>>(x, y);
 }
 
 Tensor equal(Tensor& x, Tensor& y) {
-    return binary_op<EqualOp>(x, y);
+    return binary_op<EqualOp<Float32>>(x, y);
 }
 
 Tensor less_then(Tensor& x, Tensor& y) {
-    return binary_op<LessThenOp>(x, y);
+    return binary_op<LessThenOp<Float32>>(x, y);
 }
 
 Tensor less_equal(Tensor& x, Tensor& y) {
-    return binary_op<LessEqualOp>(x, y);
+    return binary_op<LessEqualOp<Float32>>(x, y);
 }
 
 Tensor greater_then(Tensor& x, Tensor& y) {
-    return binary_op<GreaterThenOp>(x, y);
+    return binary_op<GreaterThenOp<Float32>>(x, y);
 }
 
 Tensor greater_equal(Tensor& x, Tensor& y) {
-    return binary_op<GreaterEqualOp>(x, y);
+    return binary_op<GreaterEqualOp<Float32>>(x, y);
 }
 
 Tensor relu(Tensor& x) {
-    return unary_op<ReluOp>(x);
+    return unary_op<ReluOp<Float32>>(x);
 }
 
 Tensor log(Tensor& x) {
-    return unary_op<LogOp>(x);
+    return unary_op<LogOp<Float32>>(x);
 }
 
 Tensor exp(Tensor& x) {
-    return unary_op<ExpOp>(x);
+    return unary_op<ExpOp<Float32>>(x);
 }
 
 Tensor sigmoid(Tensor& x) {
-    return unary_op<SigmoidOp>(x);
+    return unary_op<SigmoidOp<Float32>>(x);
 }
 
 Tensor copy(Tensor& x) {
-    return unary_op<CopyOp>(x);
+    return unary_op<CopyOp<Float32>>(x);
 }
 
 namespace intl {
