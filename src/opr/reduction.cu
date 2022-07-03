@@ -185,16 +185,16 @@ shared_ptr<TensorStorage> reduction(const ReductionMode mode, shared_ptr<TensorS
     int n_block = (output_size + block_size - 1) / block_size;
     switch(mode) {
     case ReductionMode::SUM:
-        kernel_reduction_op<SumOp><<<n_block, block_size>>>(res, out_format.get(), input->data(), in_format.get());
+        kernel_reduction_op<SumOp><<<n_block, block_size>>>(res, out_format.get(), input->data<float>(), in_format.get());
         break;
     case ReductionMode::MEAN:
-        kernel_reduction_op<MeanOp><<<n_block, block_size>>>(res, out_format.get(), input->data(), in_format.get());
+        kernel_reduction_op<MeanOp><<<n_block, block_size>>>(res, out_format.get(), input->data<float>(), in_format.get());
         break;
     case ReductionMode::MIN:
-        kernel_reduction_op<MinOp><<<n_block, block_size>>>(res, out_format.get(), input->data(), in_format.get());
+        kernel_reduction_op<MinOp><<<n_block, block_size>>>(res, out_format.get(), input->data<float>(), in_format.get());
         break;
     case ReductionMode::MAX:
-        kernel_reduction_op<MaxOp><<<n_block, block_size>>>(res, out_format.get(), input->data(), in_format.get());
+        kernel_reduction_op<MaxOp><<<n_block, block_size>>>(res, out_format.get(), input->data<float>(), in_format.get());
         break;
     default:
         break;

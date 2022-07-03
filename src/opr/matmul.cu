@@ -119,7 +119,7 @@ shared_ptr<TensorStorage> matmul_op(const shared_ptr<TensorStorage> x, bool x_tr
             (output_shape[2] +block_size - 1)/block_size, 
             output_shape[0]);
     
-    kernel_matmul<<<blocks, threads>>>(res, out_format.get(), x->data(), x_format.get(), y->data(), y_format.get());
+    kernel_matmul<<<blocks, threads>>>(res, out_format.get(), x->data<float>(), x_format.get(), y->data<float>(), y_format.get());
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
         printf("error\n");

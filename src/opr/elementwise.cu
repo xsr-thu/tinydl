@@ -217,7 +217,8 @@ shared_ptr<TensorStorage> binary_op(shared_ptr<TensorStorage> x, shared_ptr<Tens
 
         int block_size = 128;
         int n_block = (x->size() + block_size - 1) / block_size;
-        kernel_binary_op<Op><<<n_block, block_size>>>(res, x->data(), y->data(), x->size());
+        using DType = typename Op::T;
+        kernel_binary_op<Op><<<n_block, block_size>>>(res, x->data<DType>(), y->data<DType>(), x->size());
         cudaError_t err = cudaGetLastError();
         if (err != cudaSuccess) {
             printf("cuda error %s\n", cudaGetErrorString(err));
@@ -290,9 +291,10 @@ shared_ptr<TensorStorage> binary_op(shared_ptr<TensorStorage> x, shared_ptr<Tens
         int block_size = 128;
         int n_block = (res_size + block_size - 1) / block_size;
 
+        using DType = typename Op::T;
         kernel_binary_op<Op><<<n_block, block_size>>>(res, out_format.get(),
-                x->data(), x_format.get(),
-                y->data(), y_format.get(),
+                x->data<DType>(), x_format.get(),
+                y->data<DType>(), y_format.get(),
                 res_size);
         cudaError_t err = cudaGetLastError();
         if (err != cudaSuccess) {
@@ -310,7 +312,8 @@ shared_ptr<TensorStorage> unary_op(shared_ptr<TensorStorage> x) {
 
     int block_size = 128;
     int n_block = (x->size() + block_size - 1) / block_size;
-    kernel_unary_op<Op><<<n_block, block_size>>>(res, x->data(), x->size());
+    using DType = typename Op::T;
+    kernel_unary_op<Op><<<n_block, block_size>>>(res, x->data<DType>(), x->size());
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
         printf("cuda error %s\n", cudaGetErrorString(err));

@@ -7,7 +7,7 @@
 #include <cuda_runtime.h>
 #include <memory>
 #include "autograd.h"
-
+#include "opr/dtype.h"
 
 namespace py = pybind11;
 using namespace std;
@@ -16,12 +16,17 @@ struct GraphNode;
 struct BackwardFunc;
 
 
+enum class DataType {
+    Float32, UInt64, Bool
+};
+
+
 struct RawTensor {
 public:
-    RawTensor(float *ptr): m_ptr(ptr) {
+    RawTensor(void *ptr): m_ptr(ptr) {
     }
 
-    float* ptr() {
+    void* ptr() {
         return m_ptr;
     }
 
@@ -32,7 +37,7 @@ public:
     }
 
 private:
-    float *m_ptr;
+    void *m_ptr;
 };
 
 template<class T>
@@ -51,13 +56,13 @@ static std::string to_string(std::vector<T> &data) {
 
 struct TensorStorage {
 public:
-    TensorStorage(float* data, size_t size, vector<size_t> shape, vector<size_t> strides)
-    : m_data(std::make_shared<RawTensor>(data)), m_size(size), m_shape(shape), m_strides(strides) {
+    TensorStorage(void* data, size_t size, vector<size_t> shape, vector<size_t> strides, DataType dtype=DataType::Float32)
+    : m_dtype(dtype), m_data(std::make_shared<RawTensor>(data)), m_size(size), m_shape(shape), m_strides(strides) {
         // fprintf(stderr, "strides: %s\n", to_string(m_strides).c_str());
     }
 
-    TensorStorage(shared_ptr<TensorStorage> old_storage, vector<size_t> &shape, vector<size_t> &strides)
-    : m_data(old_storage->m_data), m_size(old_storage->size()), m_shape(shape), m_strides(strides) {
+    TensorStorage(shared_ptr<TensorStorage> old_storage, vector<size_t> &shape, vector<size_t> &strides, DataType dtype=DataType::Float32)
+    : m_dtype(dtype), m_data(old_storage->m_data), m_size(old_storage->size()), m_shape(shape), m_strides(strides) {
         // fprintf(stderr, "strides: %s\n", to_string(m_strides).c_str());
     }
 
@@ -79,8 +84,17 @@ public:
         return m_strides;
     }
 
-    inline float* data() {
+    inline void* data() {
         return m_data.get()->ptr();
+    }
+
+    template<typename T>
+    inline T* data() {
+        return static_cast<T*>(m_data.get()->ptr());
+    }
+
+    inline DataType dtype() {
+        return m_dtype;
     }
 
     ~TensorStorage() {
@@ -89,11 +103,33 @@ public:
     }
 
 private:
+    DataType m_dtype;
     std::shared_ptr<RawTensor> m_data;
     size_t m_size;
     vector<size_t> m_shape;
     vector<size_t> m_strides;
 };
+
+
+template<>
+inline float* TensorStorage::data<float>() {
+    assert(m_dtype == DataType::Float32);
+    return static_cast<float*>(m_data.get()->ptr());
+}
+
+
+template<>
+inline uint64_t* TensorStorage::data<uint64_t>() {
+    assert(m_dtype == DataType::UInt64);
+    return static_cast<uint64_t*>(m_data.get()->ptr());
+}
+
+
+template<>
+inline bool* TensorStorage::data<bool>() {
+    assert(m_dtype == DataType::Bool);
+    return static_cast<bool*>(m_data.get()->ptr());
+}
 
 
 struct Tensor {
@@ -143,7 +179,8 @@ public:
         return m_storage;
     }
 
-    py::array_t<float> to_numpy();
+    template<typename T>
+    py::array_t<T> to_numpy();
 
     void set_requires_grad(bool required);
 
@@ -169,6 +206,10 @@ public:
             m_graph_node = make_shared<GraphNode>(m_requires_grad, m_id, shape());
         }
         return m_graph_node;
+    }
+
+    DataType dtype() {
+        return m_storage->dtype();
     }
 
     shared_ptr<BackwardFunc> grad_fn();

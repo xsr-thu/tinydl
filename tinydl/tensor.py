@@ -67,7 +67,12 @@ class Tensor:
         return Tensor(self.data.grad())
 
     def to_numpy(self):
-        return self.data.to_numpy()
+        if self.dtype() == _tinydl.float32:
+            return self.data._to_numpy_float()
+        elif self.dtype() == _tinydl.uint64:
+            return self.data._to_numpy_uint64()
+        elif self.dtype() == _tinydl.bool:
+            return self.data._to_numpy_bool()
     numpy = to_numpy
 
     def shape(self):
@@ -78,6 +83,9 @@ class Tensor:
 
     def __repr__(self):
         return "Tensor({})".format(self.numpy().__str__())
+
+    def dtype(self):
+        return self.data.dtype()
 
     def item(self):
         pass

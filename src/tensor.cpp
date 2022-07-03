@@ -117,23 +117,45 @@ Tensor::~Tensor() {
 }
 
 
-py::array_t<float> Tensor::to_numpy() {
+template<typename T>
+py::array_t<T> to_numpy_impl(shared_ptr<TensorStorage> &storage) {
     // fprintf(stderr, "To numpy <%zu>: shape %s strides %s size: %lu\n",
     //         m_id,
     //         to_string(m_storage->m_shape).c_str(),
     //         to_string(m_storage->m_strides).c_str(),
     //         size());
-    vector<size_t> strides(m_storage->strides().size());
+    vector<size_t> strides(storage->strides().size());
     for(int i=0; i<strides.size(); i++) {
-        strides[i] = m_storage->strides()[i] * sizeof(float);
+        strides[i] = storage->strides()[i] * sizeof(T);
     }
-    auto result = py::array_t<float>(m_storage->shape(), strides);
+    auto result = py::array_t<T>(storage->shape(), strides);
     py::buffer_info buf = result.request();
 
-    float *ptr = static_cast<float*>(buf.ptr);
-    cudaMemcpy(ptr, m_storage->data(), sizeof(float) * size(), cudaMemcpyDeviceToHost);
+    T *ptr = static_cast<T*>(buf.ptr);
+    cudaMemcpy(ptr, storage->data(), sizeof(T) * storage->size(), cudaMemcpyDeviceToHost);
     return result;
 }
+
+
+template<>
+py::array_t<uint64_t> Tensor::to_numpy<uint64_t>() {
+    assert(dtype() == DataType::UInt64);
+    return to_numpy_impl<uint64_t>(m_storage);
+}
+
+
+template<>
+py::array_t<float> Tensor::to_numpy<float>() {
+    assert(dtype() == DataType::Float32);
+    return to_numpy_impl<float>(m_storage);
+}
+
+template<>
+py::array_t<bool> Tensor::to_numpy<bool>() {
+    assert(dtype() == DataType::UInt64);
+    return to_numpy_impl<bool>(m_storage);
+}
+
 
 void Tensor::backward(Tensor &grad) {
     if(!m_graph_node) {
