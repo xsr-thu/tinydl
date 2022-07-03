@@ -26,6 +26,21 @@ class Tensor:
     def __truediv__(self, other):
         return opr.div(self, other)
 
+    def __eq__(self, other):
+        return opr.equal(self, other)
+
+    def __lt__(self, other):
+        return opr.less_then(self, other)
+
+    def __le__(self, other):
+        return opr.less_equal(self, other)
+
+    def __gt__(self, other):
+        return opr.greater_then(self, other)
+
+    def __ge__(self, other):
+        return opr.greater_equal(self, other)
+
     def sum(self, axis, keep_dim=False):
         return opr.sum(self, axis, keep_dim)
 
@@ -89,6 +104,12 @@ class Tensor:
 
     def item(self):
         pass
+
+    def as_float(self):
+        return opr.as_float32(self)
+
+    def as_bool(self):
+        return opr.as_bool(self)
 
     def __len__(self):
         pass

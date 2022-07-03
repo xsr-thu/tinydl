@@ -22,6 +22,14 @@ def relu(x):
     return _as_tensor(_tinydl.op_relu(x.data))
 
 
+def as_float32(x):
+    return _as_tensor(_tinydl.op_as_float32(x.data))
+
+
+def as_bool(x):
+    return _as_tensor(_tinydl.op_as_bool(x.data))
+
+
 def add(x, y):
     return _as_tensor(_tinydl.op_add(x.data, y.data))
 
@@ -88,6 +96,7 @@ def view(x, shape):
 
 def conv2d(x, w, padding, stride):
     return _as_tensor(_tinydl.op_conv2d(x.data, w.data, padding, stride))
+
 
 def batchnorm(x, weight, bias, running_mean, running_var, is_train):
     return _as_tensor(_tinydl.op_batchnorm(

@@ -29,6 +29,9 @@ namespace opr {
     Tensor sigmoid(Tensor& x);
     Tensor copy(Tensor& x);
 
+    Tensor as_float32(Tensor& x);
+    Tensor as_bool(Tensor& x);
+
 namespace intl {    
     using ::copy;
     using ::add;

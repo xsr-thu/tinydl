@@ -11,10 +11,32 @@ struct BinaryOpBackwarFuncBase;
 
 // *****************************************************************************
 template<typename DT>
+struct AsFloat32Op {
+    using DType = DT;
+    using T = typename DT::T;
+    using RT = float;
+    static __device__ __forceinline__ RT apply(T x) {
+        return static_cast<RT>(x);
+    }
+};
+
+template<typename DT>
+struct AsBoolOp {
+    using DType = DT;
+    using T = typename DT::T;
+    using RT = bool;
+    static __device__ __forceinline__ RT apply(T x) {
+        return static_cast<RT>(x);
+    }
+};
+
+// *****************************************************************************
+template<typename DT>
 struct ReluOp {
     using DType = DT;
     using T = typename DT::T;
-    static __device__ __forceinline__ T apply(T x) {
+    using RT = typename DT::T;
+    static __device__ __forceinline__ RT apply(T x) {
         return x > DT::one() ? x: DT::zero();
     }
 };
@@ -23,7 +45,8 @@ template<typename DT>
 struct ExpOp {
     using DType = DT;
     using T = typename DT::T;
-    static __device__ __forceinline__ T apply(T x) {
+    using RT = typename DT::T;
+    static __device__ __forceinline__ RT apply(T x) {
         return DT::exp(x);
     }
 };
@@ -32,7 +55,8 @@ template<typename DT>
 struct LogOp {
     using DType = DT;
     using T = typename DT::T;
-    static __device__ __forceinline__ T apply(T x) {
+    using RT = typename DT::T;
+    static __device__ __forceinline__ RT apply(T x) {
         return DT::log(x);
     }
 };
@@ -41,7 +65,8 @@ template<typename DT>
 struct SigmoidOp {
     using DType = DT;
     using T = typename DT::T;
-    static __device__ __forceinline__ T apply(T x) {
+    using RT = typename DT::T;
+    static __device__ __forceinline__ RT apply(T x) {
         return DT::one() / (DT::one() + DT::exp(x));
     }
 };
@@ -50,7 +75,8 @@ template<typename DT>
 struct NegOp {
     using DType = DT;
     using T = typename DT::T;
-    static __device__ __forceinline__ T apply(T x) {
+    using RT = typename DT::T;
+    static __device__ __forceinline__ RT apply(T x) {
         return -x;
     }
 };
@@ -59,7 +85,8 @@ template<typename DT>
 struct CopyOp {
     using DType = DT;
     using T = typename DT::T;
-    static __device__ __forceinline__ T apply(T x) {
+    using RT = typename DT::T;
+    static __device__ __forceinline__ RT apply(T x) {
         return x;
     }
 };
@@ -68,7 +95,8 @@ template<typename DT>
 struct ReciprocalOp {
     using DType = DT;
     using T = typename DT::T;
-    static __device__ __forceinline__ T apply(T x) {
+    using RT = typename DT::T;
+    static __device__ __forceinline__ RT apply(T x) {
         return DT::one() / x;
     }
 };
@@ -78,7 +106,8 @@ template<typename DT>
 struct AddOp {
     using DType = DT;
     using T = typename DT::T;
-    static __device__ __forceinline__ T apply(T lhs, T rhs) {
+    using RT = typename DT::T;
+    static __device__ __forceinline__ RT apply(T lhs, T rhs) {
         return lhs + rhs;
     }
 };
@@ -87,7 +116,8 @@ template<typename DT>
 struct SubOp {
     using DType = DT;
     using T = typename DT::T;
-    static __device__ __forceinline__ T apply(T lhs, T rhs) {
+    using RT = typename DT::T;
+    static __device__ __forceinline__ RT apply(T lhs, T rhs) {
         return lhs - rhs;
     }
 };
@@ -96,7 +126,8 @@ template<typename DT>
 struct MulOp {
     using DType = DT;
     using T = typename DT::T;
-    static __device__ __forceinline__ T apply(T lhs, T rhs) {
+    using RT = typename DT::T;
+    static __device__ __forceinline__ RT apply(T lhs, T rhs) {
         return lhs * rhs;
     }
 };
@@ -105,17 +136,70 @@ template<typename DT>
 struct DivOp {
     using DType = DT;
     using T = typename DT::T;
-    static __device__ __forceinline__ T apply(T lhs, T rhs) {
+    using RT = typename DT::T;
+    static __device__ __forceinline__ RT apply(T lhs, T rhs) {
         return lhs / rhs;
     }
 };
 
+// *****************************************************************************
+template<typename DT>
+struct BooleanEqualOp {
+    using DType = DT;
+    using T = typename DT::T;
+    using RT = bool;
+    static __device__ __forceinline__ RT apply(T lhs, T rhs) {
+        return lhs == rhs;
+    }
+};
+
+template<typename DT>
+struct BooleanLessThenOp {
+    using DType = DT;
+    using T = typename DT::T;
+    using RT = bool;
+    static __device__ __forceinline__ RT apply(T lhs, T rhs) {
+        return lhs < rhs;
+    }
+};
+
+template<typename DT>
+struct BooleanLessEqualOp {
+    using DType = DT;
+    using T = typename DT::T;
+    using RT = bool;
+    static __device__ __forceinline__ RT apply(T lhs, T rhs) {
+        return lhs <= rhs;
+    }
+};
+
+template<typename DT>
+struct BooleanGreaterThenOp {
+    using DType = DT;
+    using T = typename DT::T;
+    using RT = bool;
+    static __device__ __forceinline__ RT apply(T lhs, T rhs) {
+        return lhs > rhs;
+    }
+};
+
+template<typename DT>
+struct BooleanGreaterEqualOp {
+    using DType = DT;
+    using T = typename DT::T;
+    using RT = bool;
+    static __device__ __forceinline__ RT apply(T lhs, T rhs) {
+        return lhs >= rhs;
+    }
+};
+// *****************************************************************************
 template<typename DT>
 struct EqualOp {
     using DType = DT;
     using T = typename DT::T;
-    static __device__ __forceinline__ T apply(T lhs, T rhs) {
-        return lhs == rhs ? DT::one(): DT::zero();
+    using RT = T;
+    static __device__ __forceinline__ RT apply(T lhs, T rhs) {
+        return lhs == rhs;
     }
 };
 
@@ -123,8 +207,9 @@ template<typename DT>
 struct LessThenOp {
     using DType = DT;
     using T = typename DT::T;
-    static __device__ __forceinline__ T apply(T lhs, T rhs) {
-        return lhs < rhs ? DT::one(): DT::zero();
+    using RT = T;
+    static __device__ __forceinline__ RT apply(T lhs, T rhs) {
+        return lhs < rhs;
     }
 };
 
@@ -132,8 +217,9 @@ template<typename DT>
 struct LessEqualOp {
     using DType = DT;
     using T = typename DT::T;
-    static __device__ __forceinline__ T apply(T lhs, T rhs) {
-        return lhs <= rhs ? DT::one(): DT::zero();
+    using RT = T;
+    static __device__ __forceinline__ RT apply(T lhs, T rhs) {
+        return lhs <= rhs;
     }
 };
 
@@ -141,8 +227,9 @@ template<typename DT>
 struct GreaterThenOp {
     using DType = DT;
     using T = typename DT::T;
-    static __device__ __forceinline__ T apply(T lhs, T rhs) {
-        return lhs > rhs ? DT::one(): DT::zero();
+    using RT = T;
+    static __device__ __forceinline__ RT apply(T lhs, T rhs) {
+        return lhs > rhs;
     }
 };
 
@@ -150,14 +237,19 @@ template<typename DT>
 struct GreaterEqualOp {
     using DType = DT;
     using T = typename DT::T;
-    static __device__ __forceinline__ T apply(T lhs, T rhs) {
-        return lhs >= rhs ? DT::one(): DT::zero();
+    using RT = T;
+    static __device__ __forceinline__ RT apply(T lhs, T rhs) {
+        return lhs >= rhs;
     }
 };
 
+
 // *****************************************************************************
 template<typename Op>
-__global__ void kernel_binary_op(float *out, float *a, float *b, size_t n) {
+__global__ void kernel_binary_op(
+        typename Op::RT *out,
+        typename Op::T *a,
+        typename Op::T *b, size_t n) {
     size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
     if(idx < n) {
         out[idx] = Op::apply(a[idx], b[idx]);
@@ -166,9 +258,10 @@ __global__ void kernel_binary_op(float *out, float *a, float *b, size_t n) {
 
 
 template<typename Op>
-__global__ void kernel_binary_op(float *out, TensorFormat *out_format, 
-        float *a, TensorFormat* a_format, 
-        float *b, TensorFormat* b_format,
+__global__ void kernel_binary_op(
+        typename Op::RT *out, TensorFormat *out_format,
+        typename Op::T *a, TensorFormat* a_format,
+        typename Op::T *b, TensorFormat* b_format,
         size_t n) {
     size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
     
@@ -194,7 +287,7 @@ __global__ void kernel_binary_op(float *out, TensorFormat *out_format,
 
 
 template<typename Op>
-__global__ void kernel_unary_op(float *out, float *in, size_t n) {
+__global__ void kernel_unary_op(typename Op::RT *out, typename Op::T *in, size_t n) {
     size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
     if(idx < n) {
         out[idx] = Op::apply(in[idx]);
@@ -211,9 +304,9 @@ shared_ptr<TensorStorage> binary_op(shared_ptr<TensorStorage> x, shared_ptr<Tens
     for(size_t i=0; i<x->dim(); i++)
         same_layout = same_layout && (x->shape()[i] == y->shape()[i]) && (x->strides()[i] == y->strides()[i]);
 
-    float *res;
+    typename Op::RT *res;
     if(same_layout) {
-        cudaMalloc(&res, sizeof(float) * x->size());
+        cudaMalloc(&res, sizeof(typename Op::RT) * x->size());
 
         int block_size = 128;
         int n_block = (x->size() + block_size - 1) / block_size;
@@ -223,7 +316,8 @@ shared_ptr<TensorStorage> binary_op(shared_ptr<TensorStorage> x, shared_ptr<Tens
         if (err != cudaSuccess) {
             printf("cuda error %s\n", cudaGetErrorString(err));
         }
-        return make_shared<TensorStorage>(res, x->size(), x->shape(), x->strides());
+        return make_shared<TensorStorage>(res, x->size(), x->shape(), x->strides(),
+                typeclass_to_enum<typename Op::RT>());
     } else {
         vector<size_t> out_shape;
         vector<size_t> out_strides;
@@ -286,7 +380,7 @@ shared_ptr<TensorStorage> binary_op(shared_ptr<TensorStorage> x, shared_ptr<Tens
             throw "Error";
         }
         
-        cudaMalloc(&res, sizeof(float) * res_size);
+        cudaMalloc(&res, sizeof(typename Op::RT) * res_size);
 
         int block_size = 128;
         int n_block = (res_size + block_size - 1) / block_size;
@@ -300,15 +394,16 @@ shared_ptr<TensorStorage> binary_op(shared_ptr<TensorStorage> x, shared_ptr<Tens
         if (err != cudaSuccess) {
             printf("cuda error %s\n", cudaGetErrorString(err));
         }
-        return make_shared<TensorStorage>(res, res_size, out_shape, out_strides);
+        return make_shared<TensorStorage>(res, res_size, out_shape, out_strides,
+                typeclass_to_enum<typename Op::RT>());
     }
 }
 
 
 template<typename Op>
 shared_ptr<TensorStorage> unary_op(shared_ptr<TensorStorage> x) {
-    float *res;
-    cudaMalloc(&res, sizeof(float) * x->size());
+    typename Op::RT *res;
+    cudaMalloc(&res, sizeof(typename Op::RT) * x->size());
 
     int block_size = 128;
     int n_block = (x->size() + block_size - 1) / block_size;
@@ -318,21 +413,23 @@ shared_ptr<TensorStorage> unary_op(shared_ptr<TensorStorage> x) {
     if (err != cudaSuccess) {
         printf("cuda error %s\n", cudaGetErrorString(err));
     }
-    return make_shared<TensorStorage>(res, x->size(), x->shape(), x->strides());
+    return make_shared<TensorStorage>(res, x->size(), x->shape(), x->strides(),
+            typeclass_to_enum<typename Op::RT>());
 }
 
-
+template<typename T>
 shared_ptr<TensorStorage> copy_op(shared_ptr<TensorStorage> x) {
-    float *res;
+    T *res;
     // FIXME: multiply sizeof(float)??
-    cudaMalloc(&res, sizeof(float) * x->size());
+    cudaMalloc(&res, sizeof(T) * x->size());
 
-    cudaMemcpy(res, x->data(), sizeof(float) * x->size(), cudaMemcpyDeviceToDevice);
+    cudaMemcpy(res, x->data(), sizeof(T) * x->size(), cudaMemcpyDeviceToDevice);
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
         printf("cuda error %s\n", cudaGetErrorString(err));
     }
-    return make_shared<TensorStorage>(res, x->size(), x->shape(), x->strides());
+    return make_shared<TensorStorage>(res, x->size(), x->shape(), x->strides(),
+            typeclass_to_enum<T>());
 }
 
 
@@ -394,8 +491,50 @@ shared_ptr<TensorStorage> neg(shared_ptr<TensorStorage> x) {
     return unary_op<NegOp<Float32>>(x);
 }
 
+
+shared_ptr<TensorStorage> as_float32(shared_ptr<TensorStorage> x) {
+    // TODO: add unified dispatcher
+    switch(x->dtype()) {
+        case DataType::Float32:
+            return unary_op<AsFloat32Op<Float32>>(x);
+        case DataType::UInt64:
+            return unary_op<AsFloat32Op<UInt64>>(x);
+        case DataType::Bool:
+            return unary_op<AsFloat32Op<Bool>>(x);
+        default:
+            assert(false);
+            return x;
+    }
+}
+
+
+shared_ptr<TensorStorage> as_bool(shared_ptr<TensorStorage> x) {
+    // TODO: add unified dispatcher
+    switch(x->dtype()) {
+        case DataType::Float32:
+            return unary_op<AsBoolOp<Float32>>(x);
+        case DataType::UInt64:
+            return unary_op<AsBoolOp<UInt64>>(x);
+        case DataType::Bool:
+            return unary_op<AsBoolOp<Bool>>(x);
+        default:
+            assert(false);
+            return x;
+    }
+}
+
+
 shared_ptr<TensorStorage> copy(shared_ptr<TensorStorage> x) {
-    return copy_op(x);
+    switch(x->dtype()) {
+        case DataType::Float32:
+            return copy_op<typename Float32::T>(x);
+        case DataType::UInt64:
+            return copy_op<typename UInt64::T>(x);
+        case DataType::Bool:
+            return copy_op<typename Bool::T>(x);
+        default:
+            return nullptr;
+    }
 }
 
 shared_ptr<TensorStorage> reciprocal(shared_ptr<TensorStorage> x) {
@@ -732,6 +871,16 @@ struct UnaryBackwardFuncImpl<DT, ReciprocalOp<DT>>: UnaryBackwardFuncBase {
     }
 };
 
+template<typename DT>
+struct UnaryBackwardFuncImpl<DT, AsFloat32Op<DT>>: UnaryBackwardFuncBase {
+    void backward_func(shared_ptr<GraphNode> out_node) override {
+        shared_ptr<TensorStorage> out_grad = out_node->grad_storage();
+        if (std::is_same<DT, Float32>::value) {
+            shared_ptr<TensorStorage> res = out_grad;
+            m_input_nodes[0]->acc_grad(res);
+        }
+    }
+};
 
 // template<typename DT, typename Opr>
 // struct UnaryBackwardFuncImpl: UnaryBackwardFunc<UnaryBackwardFuncImpl<DT, Opr>> {
@@ -811,9 +960,14 @@ Tensor unary_op(Tensor& x) {
     using DType = typename Op::DType;
     Tensor res;
     if(std::is_same<Op, CopyOp<DType>>::value) {
-        res = Tensor(copy_op(x.storage()));
+        res = Tensor(copy_op<typename Op::RT>(x.storage()));
     } else {
         res = Tensor(unary_op<Op>(x.storage()));
+    }
+
+    // bool do not support grad
+    if(std::is_same<Op, AsBoolOp<DType>>::value || std::is_same<DType, Bool>::value) {
+        return res;
     }
 
     if(x.need_grad()) {
@@ -859,23 +1013,53 @@ Tensor div(Tensor& x, Tensor& y) {
 }
 
 Tensor equal(Tensor& x, Tensor& y) {
-    return binary_op<EqualOp<Float32>>(x, y);
+    return binary_op<BooleanEqualOp<Float32>>(x, y);
 }
 
 Tensor less_then(Tensor& x, Tensor& y) {
-    return binary_op<LessThenOp<Float32>>(x, y);
+    return binary_op<BooleanLessThenOp<Float32>>(x, y);
 }
 
 Tensor less_equal(Tensor& x, Tensor& y) {
-    return binary_op<LessEqualOp<Float32>>(x, y);
+    return binary_op<BooleanLessEqualOp<Float32>>(x, y);
 }
 
 Tensor greater_then(Tensor& x, Tensor& y) {
-    return binary_op<GreaterThenOp<Float32>>(x, y);
+    return binary_op<BooleanGreaterThenOp<Float32>>(x, y);
 }
 
 Tensor greater_equal(Tensor& x, Tensor& y) {
-    return binary_op<GreaterEqualOp<Float32>>(x, y);
+    return binary_op<BooleanGreaterEqualOp<Float32>>(x, y);
+}
+
+Tensor as_float32(Tensor& x) {
+    // TODO: add unified dispatcher
+    switch(x.storage()->dtype()) {
+        case DataType::Float32:
+            return unary_op<AsFloat32Op<Float32>>(x);
+        case DataType::UInt64:
+            return unary_op<AsFloat32Op<UInt64>>(x);
+        case DataType::Bool:
+            return unary_op<AsFloat32Op<Bool>>(x);
+        default:
+            assert(false);
+            return x;
+    }
+}
+
+Tensor as_bool(Tensor& x) {
+    // TODO: add unified dispatcher
+    switch(x.storage()->dtype()) {
+        case DataType::Float32:
+            return unary_op<AsBoolOp<Float32>>(x);
+        case DataType::UInt64:
+            return unary_op<AsBoolOp<UInt64>>(x);
+        case DataType::Bool:
+            return unary_op<AsBoolOp<Bool>>(x);
+        default:
+            assert(false);
+            return x;
+    }
 }
 
 Tensor relu(Tensor& x) {

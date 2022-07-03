@@ -19,10 +19,14 @@ PYBIND11_MODULE(_tinydl, m) {
     m.def("op_div", &opr::div);
     
     m.def("op_equal", &opr::equal);
-    m.def("op_less_than", &opr::less_then);
+    m.def("op_less_then", &opr::less_then);
     m.def("op_less_equal", &opr::less_equal);
-    m.def("op_greater_than", &opr::greater_then);
+    m.def("op_greater_then", &opr::greater_then);
     m.def("op_greater_equal", &opr::greater_equal);
+
+    // type convertion
+    m.def("op_as_float32", &opr::as_float32);
+    m.def("op_as_bool", &opr::as_bool);
 
     m.def("op_relu", &opr::relu);
     m.def("op_log", &opr::log);

@@ -1,5 +1,17 @@
+#pragma once
+
 #ifndef _DTYPE_H_
 #define _DTYPE_H_
+
+using uint64_t = unsigned long;
+
+// #include "tensor.h"
+
+enum class DataType {
+    Float32, UInt64, Bool
+};
+
+
 
 struct Float32 {
     using T = float;
@@ -37,4 +49,9 @@ struct Bool {
         return false;    
     }
 };
+
+
+template<typename T>
+DataType typeclass_to_enum();
+
 #endif

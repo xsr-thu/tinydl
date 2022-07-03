@@ -7,18 +7,13 @@
 #include <cuda_runtime.h>
 #include <memory>
 #include "autograd.h"
-#include "opr/dtype.h"
+#include "dtype.h"
 
 namespace py = pybind11;
 using namespace std;
 
 struct GraphNode;
 struct BackwardFunc;
-
-
-enum class DataType {
-    Float32, UInt64, Bool
-};
 
 
 struct RawTensor {

@@ -152,7 +152,7 @@ py::array_t<float> Tensor::to_numpy<float>() {
 
 template<>
 py::array_t<bool> Tensor::to_numpy<bool>() {
-    assert(dtype() == DataType::UInt64);
+    assert(dtype() == DataType::Bool);
     return to_numpy_impl<bool>(m_storage);
 }
 
