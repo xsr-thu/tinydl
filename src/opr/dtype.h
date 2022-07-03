@@ -31,10 +31,10 @@ struct Float32 {
 
 struct UInt64 {
     using T = uint64_t;
-    static uint64_t one() {
+    static __device__ __forceinline__ uint64_t one() {
         return 1UL;
     }
-    static uint64_t zero() {
+    static __device__ __forceinline__ uint64_t zero() {
         return 0UL;    
     }
 };
@@ -42,10 +42,10 @@ struct UInt64 {
 
 struct Bool {
     using T = bool;
-    static bool one() {
+    static __device__ __forceinline__ bool one() {
         return true;
     }
-    static bool zero() {
+    static __device__ __forceinline__ bool zero() {
         return false;    
     }
 };

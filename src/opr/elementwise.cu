@@ -400,6 +400,23 @@ shared_ptr<TensorStorage> binary_op(shared_ptr<TensorStorage> x, shared_ptr<Tens
 }
 
 
+template<template<typename> typename Op>
+shared_ptr<TensorStorage> dispatch_binary_op(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
+    // TODO: type check
+    switch(x->dtype()) {
+        case DataType::Float32:
+            return binary_op<Op<Float32>>(x, y);
+        case DataType::UInt64:
+            return binary_op<Op<UInt64>>(x, y);
+        case DataType::Bool:
+            return binary_op<Op<Bool>>(x, y);
+        default:
+            throw "Excepton";
+    }
+}
+
+
+
 template<typename Op>
 shared_ptr<TensorStorage> unary_op(shared_ptr<TensorStorage> x) {
     typename Op::RT *res;
@@ -416,6 +433,22 @@ shared_ptr<TensorStorage> unary_op(shared_ptr<TensorStorage> x) {
     return make_shared<TensorStorage>(res, x->size(), x->shape(), x->strides(),
             typeclass_to_enum<typename Op::RT>());
 }
+
+
+template<template<typename> typename Op>
+shared_ptr<TensorStorage> dispatch_unary_op(shared_ptr<TensorStorage> x) {
+    switch(x->dtype()) {
+        case DataType::Float32:
+            return unary_op<Op<Float32>>(x);
+        case DataType::UInt64:
+            return unary_op<Op<UInt64>>(x);
+        case DataType::Bool:
+            return unary_op<Op<Bool>>(x);
+        default:
+            throw "Excepton";
+    }
+}
+
 
 template<typename T>
 shared_ptr<TensorStorage> copy_op(shared_ptr<TensorStorage> x) {
@@ -436,91 +469,72 @@ shared_ptr<TensorStorage> copy_op(shared_ptr<TensorStorage> x) {
 // *****************************************************************************
 
 shared_ptr<TensorStorage> add(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op<AddOp<Float32>>(x, y);
+    return dispatch_binary_op<AddOp>(x, y);
 }
 
 shared_ptr<TensorStorage> sub(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op<SubOp<Float32>>(x, y);
+    return dispatch_binary_op<SubOp>(x, y);
 }
 
 shared_ptr<TensorStorage> mul(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op<MulOp<Float32>>(x, y);
+    return dispatch_binary_op<MulOp>(x, y);
 }
 
 shared_ptr<TensorStorage> div(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op<DivOp<Float32>>(x, y);
+    return dispatch_binary_op<DivOp>(x, y);
 }
 
 shared_ptr<TensorStorage> equal(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op<EqualOp<Float32>>(x, y);
+    return dispatch_binary_op<EqualOp>(x, y);
 }
 
 shared_ptr<TensorStorage> less_then(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op<LessThenOp<Float32>>(x, y);
+    return dispatch_binary_op<LessThenOp>(x, y);
 }
 
 shared_ptr<TensorStorage> less_equal(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op<LessEqualOp<Float32>>(x, y);
+    return dispatch_binary_op<LessEqualOp>(x, y);
 }
 
 shared_ptr<TensorStorage> greater_then(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op<GreaterThenOp<Float32>>(x, y);
+    return dispatch_binary_op<GreaterThenOp>(x, y);
 }
 
 shared_ptr<TensorStorage> greater_equal(shared_ptr<TensorStorage> x, shared_ptr<TensorStorage> y) {
-    return binary_op<GreaterEqualOp<Float32>>(x, y);
+    return dispatch_binary_op<GreaterEqualOp>(x, y);
 }
 
 shared_ptr<TensorStorage> relu(shared_ptr<TensorStorage> x) {
-    return unary_op<ReluOp<Float32>>(x);
+    return dispatch_unary_op<ReluOp>(x);
 }
 
 shared_ptr<TensorStorage> exp(shared_ptr<TensorStorage> x) {
+    // FIXME:
     return unary_op<ExpOp<Float32>>(x);
 }
 
 shared_ptr<TensorStorage> log(shared_ptr<TensorStorage> x) {
+    // FIXME:
     return unary_op<LogOp<Float32>>(x);
 }
 
 shared_ptr<TensorStorage> sigmoid(shared_ptr<TensorStorage> x) {
+    // FIXME:
     return unary_op<SigmoidOp<Float32>>(x);
 }
 
 shared_ptr<TensorStorage> neg(shared_ptr<TensorStorage> x) {
-    return unary_op<NegOp<Float32>>(x);
+    return dispatch_unary_op<NegOp>(x);
 }
 
 
 shared_ptr<TensorStorage> as_float32(shared_ptr<TensorStorage> x) {
-    // TODO: add unified dispatcher
-    switch(x->dtype()) {
-        case DataType::Float32:
-            return unary_op<AsFloat32Op<Float32>>(x);
-        case DataType::UInt64:
-            return unary_op<AsFloat32Op<UInt64>>(x);
-        case DataType::Bool:
-            return unary_op<AsFloat32Op<Bool>>(x);
-        default:
-            assert(false);
-            return x;
-    }
+    return dispatch_unary_op<AsFloat32Op>(x);
 }
 
 
 shared_ptr<TensorStorage> as_bool(shared_ptr<TensorStorage> x) {
-    // TODO: add unified dispatcher
-    switch(x->dtype()) {
-        case DataType::Float32:
-            return unary_op<AsBoolOp<Float32>>(x);
-        case DataType::UInt64:
-            return unary_op<AsBoolOp<UInt64>>(x);
-        case DataType::Bool:
-            return unary_op<AsBoolOp<Bool>>(x);
-        default:
-            assert(false);
-            return x;
-    }
+    return dispatch_unary_op<AsBoolOp>(x);
 }
 
 
@@ -779,6 +793,24 @@ Tensor binary_op(Tensor& x, Tensor& y) {
     return res;
 }
 
+
+template<template<typename> typename Op>
+Tensor dispatch_binary_op(Tensor& x, Tensor& y) {
+    // TODO: type check
+    switch(x.dtype()) {
+        case DataType::Float32:
+            return binary_op<Op<Float32>>(x, y);
+        case DataType::UInt64:
+            return binary_op<Op<UInt64>>(x, y);
+        case DataType::Bool:
+            return binary_op<Op<Bool>>(x, y);
+        default:
+            throw "Excepton";
+    }
+}
+
+
+
 // *****************************************************************************
 struct UnaryBackwardFuncBase;
 template<typename DT, typename Opr>
@@ -993,80 +1025,73 @@ Tensor unary_op(Tensor& x) {
     return res;
 }
 
+template<template<typename> typename Op>
+Tensor dispatch_unary_op(Tensor& x) {
+    switch(x.dtype()) {
+        case DataType::Float32:
+            return unary_op<Op<Float32>>(x);
+        case DataType::UInt64:
+            return unary_op<Op<UInt64>>(x);
+        case DataType::Bool:
+            return unary_op<Op<Bool>>(x);
+        default:
+            throw "Excepton";
+    }
+}
 
 // *****************************************************************************
 namespace opr {
 Tensor add(Tensor& x, Tensor& y) {
-    return binary_op<AddOp<Float32>>(x, y);
+    return dispatch_binary_op<AddOp>(x, y);
 }
 
 Tensor sub(Tensor& x, Tensor& y) {
-    return binary_op<SubOp<Float32>>(x, y);
+    return dispatch_binary_op<SubOp>(x, y);
 }
 
 Tensor mul(Tensor& x, Tensor& y) {
-    return binary_op<MulOp<Float32>>(x, y);
+    return dispatch_binary_op<MulOp>(x, y);
 }
 
 Tensor div(Tensor& x, Tensor& y) {
-    return binary_op<DivOp<Float32>>(x, y);
+    return dispatch_binary_op<DivOp>(x, y);
 }
 
 Tensor equal(Tensor& x, Tensor& y) {
-    return binary_op<BooleanEqualOp<Float32>>(x, y);
+    return dispatch_binary_op<BooleanEqualOp>(x, y);
 }
 
 Tensor less_then(Tensor& x, Tensor& y) {
-    return binary_op<BooleanLessThenOp<Float32>>(x, y);
+    return dispatch_binary_op<BooleanLessThenOp>(x, y);
 }
 
 Tensor less_equal(Tensor& x, Tensor& y) {
-    return binary_op<BooleanLessEqualOp<Float32>>(x, y);
+    return dispatch_binary_op<BooleanLessEqualOp>(x, y);
 }
 
 Tensor greater_then(Tensor& x, Tensor& y) {
-    return binary_op<BooleanGreaterThenOp<Float32>>(x, y);
+    return dispatch_binary_op<BooleanGreaterThenOp>(x, y);
 }
 
 Tensor greater_equal(Tensor& x, Tensor& y) {
-    return binary_op<BooleanGreaterEqualOp<Float32>>(x, y);
+    return dispatch_binary_op<BooleanGreaterEqualOp>(x, y);
 }
 
 Tensor as_float32(Tensor& x) {
-    // TODO: add unified dispatcher
-    switch(x.storage()->dtype()) {
-        case DataType::Float32:
-            return unary_op<AsFloat32Op<Float32>>(x);
-        case DataType::UInt64:
-            return unary_op<AsFloat32Op<UInt64>>(x);
-        case DataType::Bool:
-            return unary_op<AsFloat32Op<Bool>>(x);
-        default:
-            assert(false);
-            return x;
-    }
+    return dispatch_unary_op<AsFloat32Op>(x);
 }
 
 Tensor as_bool(Tensor& x) {
-    // TODO: add unified dispatcher
-    switch(x.storage()->dtype()) {
-        case DataType::Float32:
-            return unary_op<AsBoolOp<Float32>>(x);
-        case DataType::UInt64:
-            return unary_op<AsBoolOp<UInt64>>(x);
-        case DataType::Bool:
-            return unary_op<AsBoolOp<Bool>>(x);
-        default:
-            assert(false);
-            return x;
-    }
+    return dispatch_unary_op<AsBoolOp>(x);
 }
 
 Tensor relu(Tensor& x) {
-    return unary_op<ReluOp<Float32>>(x);
+    // FIXME:
+    return dispatch_unary_op<ReluOp>(x);
 }
 
 Tensor log(Tensor& x) {
+    // FIXME:
     return unary_op<LogOp<Float32>>(x);
 }
 
@@ -1075,11 +1100,12 @@ Tensor exp(Tensor& x) {
 }
 
 Tensor sigmoid(Tensor& x) {
+    // FIXME:
     return unary_op<SigmoidOp<Float32>>(x);
 }
 
 Tensor copy(Tensor& x) {
-    return unary_op<CopyOp<Float32>>(x);
+    return dispatch_unary_op<CopyOp>(x);
 }
 
 namespace intl {
