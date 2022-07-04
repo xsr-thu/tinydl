@@ -8,7 +8,7 @@ using uint64_t = unsigned long;
 // #include "tensor.h"
 
 enum class DataType {
-    Float32, UInt64, Bool
+    Float32, UInt64, Int64, Bool
 };
 
 
@@ -35,9 +35,21 @@ struct UInt64 {
         return 1UL;
     }
     static __device__ __forceinline__ uint64_t zero() {
-        return 0UL;    
+        return 0UL;
     }
 };
+
+
+struct Int64 {
+    using T = uint64_t;
+    static __device__ __forceinline__ int64_t one() {
+        return 1UL;
+    }
+    static __device__ __forceinline__ int64_t zero() {
+        return 0UL;
+    }
+};
+
 
 
 struct Bool {
@@ -46,7 +58,7 @@ struct Bool {
         return true;
     }
     static __device__ __forceinline__ bool zero() {
-        return false;    
+        return false;
     }
 };
 

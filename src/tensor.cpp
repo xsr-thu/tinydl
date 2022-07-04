@@ -65,6 +65,28 @@ Tensor::Tensor(py::array_t<uint64_t> arr) {
 }
 
 
+Tensor::Tensor(py::array_t<int64_t> arr) {
+    py::buffer_info info = arr.request();
+    size_t n_elem = 1;
+    vector<size_t> shape;
+    vector<size_t> strides;
+
+    for(size_t i=0; i<info.shape.size(); i++) {
+        shape.push_back(info.shape[i]);
+        n_elem *= info.shape[i];
+    }
+    for(size_t i=0; i<info.strides.size(); i++) {
+        strides.push_back(info.strides[i] / sizeof(int64_t));
+    }
+    int64_t *ptr;
+    cudaMalloc(&ptr, sizeof(uint64_t)*n_elem);
+    cudaMemcpy(ptr, (uint64_t*)info.ptr, sizeof(int64_t)*n_elem, cudaMemcpyHostToDevice);
+    m_storage = make_shared<TensorStorage>(ptr, n_elem, shape, strides, DataType::Int64);
+    m_id = sm_id++;
+}
+
+
+
 Tensor::Tensor(py::array_t<bool> arr) {
     py::buffer_info info = arr.request();
     size_t n_elem = 1;
@@ -184,6 +206,11 @@ py::array_t<uint64_t> Tensor::to_numpy<uint64_t>() {
     return to_numpy_impl<uint64_t>(m_storage);
 }
 
+template<>
+py::array_t<int64_t> Tensor::to_numpy<int64_t>() {
+    assert(dtype() == DataType::Int64);
+    return to_numpy_impl<int64_t>(m_storage);
+}
 
 template<>
 py::array_t<float> Tensor::to_numpy<float>() {

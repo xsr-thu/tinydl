@@ -53,12 +53,14 @@ PYBIND11_MODULE(_tinydl, m) {
     py::enum_<DataType>(m, "DataType")
         .value("float32", DataType::Float32)
         .value("uint64", DataType::UInt64)
+        .value("int64", DataType::Int64)
         .value("bool", DataType::Bool)
         .export_values();
 
     py::class_ <Tensor, shared_ptr<Tensor>>(m, "Tensor")
         .def(py::init<py::array_t<float> &>())
         .def(py::init<py::array_t<uint64_t> &>())
+        .def(py::init<py::array_t<int64_t> &>())
         .def(py::init<py::array_t<bool> &>())
         .def("requires_grad_", &Tensor::set_requires_grad)
         .def("zero_grad", &Tensor::zero_grad)
@@ -68,6 +70,7 @@ PYBIND11_MODULE(_tinydl, m) {
         .def("graph_node", &Tensor::graph_node)
         .def("_to_numpy_float", &Tensor::to_numpy<float>)
         .def("_to_numpy_uint64", &Tensor::to_numpy<uint64_t>)
+        .def("_to_numpy_int64", &Tensor::to_numpy<int64_t>)
         .def("_to_numpy_bool", &Tensor::to_numpy<bool>)
         .def("set_value", &Tensor::set_value)
         .def("dtype", &Tensor::dtype)

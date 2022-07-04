@@ -11,6 +11,7 @@ def as_numpy_dtype(dtype):
     mapping = {
         DataType.float32: np.float32,
         DataType.uint64: np.uint64,
+        DataType.int64: np.int64,
         DataType.bool: np.bool,
     }
     if isinstance(dtype, DataType):
@@ -32,6 +33,8 @@ class Tensor:
                 self.data = _tinydl.Tensor(arr.astype(np.float32))
             elif arr.dtype in [np.uint64]:
                 self.data = _tinydl.Tensor(arr.astype(np.uint64))
+            elif arr.dtype in [np.int64]:
+                self.data = _tinydl.Tensor(arr.astype(np.int64))
             elif arr.dtype in [np.bool]:
                 self.data = _tinydl.Tensor(arr.astype(np.bool))
             else:
@@ -112,6 +115,8 @@ class Tensor:
             return self.data._to_numpy_float()
         elif self.dtype() == _tinydl.uint64:
             return self.data._to_numpy_uint64()
+        elif self.dtype() == _tinydl.int64:
+            return self.data._to_numpy_int64()
         elif self.dtype() == _tinydl.bool:
             return self.data._to_numpy_bool()
     numpy = to_numpy

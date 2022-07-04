@@ -143,6 +143,8 @@ public:
 
     Tensor(py::array_t<uint64_t> arr);
 
+    Tensor(py::array_t<int64_t> arr);
+
     Tensor(py::array_t<bool> arr);
 
     Tensor(float *data, vector<size_t> shape, vector<size_t> strides);
