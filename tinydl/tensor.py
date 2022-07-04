@@ -1,18 +1,42 @@
 import numpy as np
 
 from . import _tinydl
+from ._tinydl import DataType
 from . import operators as opr
+
+
+def as_numpy_dtype(dtype):
+    if dtype is None:
+        return None
+    mapping = {
+        DataType.float32: np.float32,
+        DataType.uint64: np.uint64,
+        DataType.bool: np.bool,
+    }
+    if isinstance(dtype, DataType):
+        return mapping[dtype]
+    assert dtype in set(mapping.values())
+    return dtype
 
 
 class Tensor:
 
-    def __init__(self, data):
+    def __init__(self, data, dtype=None):
         if isinstance(data, _tinydl.Tensor):
             self.data = data
         elif isinstance(data, np.ndarray):
             self.data = _tinydl.Tensor(data)
         else:
-            self.data = _tinydl.Tensor(np.array(data, dtype=np.float32))
+            arr = np.array(data, dtype=as_numpy_dtype(dtype))
+            if arr.dtype in [np.float32, np.float64]:
+                self.data = _tinydl.Tensor(arr.astype(np.float32))
+            elif arr.dtype in [np.uint64]:
+                self.data = _tinydl.Tensor(arr.astype(np.uint64))
+            elif arr.dtype in [np.bool]:
+                self.data = _tinydl.Tensor(arr.astype(np.bool))
+            else:
+                raise NotImplementedError
+
 
     def __add__(self, other):
         return opr.add(self, other)

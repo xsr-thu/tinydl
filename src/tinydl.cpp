@@ -58,6 +58,8 @@ PYBIND11_MODULE(_tinydl, m) {
 
     py::class_ <Tensor, shared_ptr<Tensor>>(m, "Tensor")
         .def(py::init<py::array_t<float> &>())
+        .def(py::init<py::array_t<uint64_t> &>())
+        .def(py::init<py::array_t<bool> &>())
         .def("requires_grad_", &Tensor::set_requires_grad)
         .def("zero_grad", &Tensor::zero_grad)
         .def("backward", &Tensor::backward)

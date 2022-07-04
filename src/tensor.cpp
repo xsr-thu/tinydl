@@ -39,11 +39,52 @@ Tensor::Tensor(py::array_t<float> arr) {
     float *ptr;
     cudaMalloc(&ptr, sizeof(float)*n_elem);
     cudaMemcpy(ptr, (float*)info.ptr, sizeof(float)*n_elem, cudaMemcpyHostToDevice);
-    m_storage = make_shared<TensorStorage>(ptr, n_elem, shape, strides);
+    m_storage = make_shared<TensorStorage>(ptr, n_elem, shape, strides, DataType::Float32);
     m_id = sm_id++;
-    // printf("Tensor ctor: %zu\n", m_id);
-    // fprintf(stderr, "Create Tensor(%zu) from numpy shape %s stride %s\n", m_id,  to_string(shape).c_str(), to_string(strides).c_str());
 }
+
+
+Tensor::Tensor(py::array_t<uint64_t> arr) {
+    py::buffer_info info = arr.request();
+    size_t n_elem = 1;
+    vector<size_t> shape;
+    vector<size_t> strides;
+
+    for(size_t i=0; i<info.shape.size(); i++) {
+        shape.push_back(info.shape[i]);
+        n_elem *= info.shape[i];
+    }
+    for(size_t i=0; i<info.strides.size(); i++) {
+        strides.push_back(info.strides[i] / sizeof(uint64_t));
+    }
+    uint64_t *ptr;
+    cudaMalloc(&ptr, sizeof(uint64_t)*n_elem);
+    cudaMemcpy(ptr, (uint64_t*)info.ptr, sizeof(uint64_t)*n_elem, cudaMemcpyHostToDevice);
+    m_storage = make_shared<TensorStorage>(ptr, n_elem, shape, strides, DataType::UInt64);
+    m_id = sm_id++;
+}
+
+
+Tensor::Tensor(py::array_t<bool> arr) {
+    py::buffer_info info = arr.request();
+    size_t n_elem = 1;
+    vector<size_t> shape;
+    vector<size_t> strides;
+
+    for(size_t i=0; i<info.shape.size(); i++) {
+        shape.push_back(info.shape[i]);
+        n_elem *= info.shape[i];
+    }
+    for(size_t i=0; i<info.strides.size(); i++) {
+        strides.push_back(info.strides[i] / sizeof(bool));
+    }
+    bool *ptr;
+    cudaMalloc(&ptr, sizeof(bool)*n_elem);
+    cudaMemcpy(ptr, (bool*)info.ptr, sizeof(bool)*n_elem, cudaMemcpyHostToDevice);
+    m_storage = make_shared<TensorStorage>(ptr, n_elem, shape, strides, DataType::Bool);
+    m_id = sm_id++;
+}
+
 
 Tensor::Tensor(float *data, vector<size_t> shape, vector<size_t> strides) {
     size_t size = 1;
