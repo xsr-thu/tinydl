@@ -2,3 +2,7 @@ build/
 **/__pycache__/
 **/*.so
 tinydl.egg-info/
+*.pkl
+*.bak
+examples/*.txt
+tests/
