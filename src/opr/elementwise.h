@@ -28,6 +28,7 @@ namespace opr {
     Tensor exp(Tensor& x);
     Tensor sigmoid(Tensor& x);
     Tensor copy(Tensor& x);
+    Tensor neg(Tensor& x);
 
     Tensor as_float32(Tensor& x);
     Tensor as_bool(Tensor& x);

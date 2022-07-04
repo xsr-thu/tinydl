@@ -22,6 +22,10 @@ def relu(x):
     return _as_tensor(_tinydl.op_relu(x.data))
 
 
+def neg(x):
+    return _as_tensor(_tinydl.op_neg(x.data))
+
+
 def as_float32(x):
     return _as_tensor(_tinydl.op_as_float32(x.data))
 

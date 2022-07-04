@@ -68,6 +68,9 @@ class Tensor:
     def __ge__(self, other):
         return opr.greater_equal(self, other)
 
+    def __neg__(self):
+        return opr.neg(self)
+
     def sum(self, axis, keep_dim=False):
         return opr.sum(self, axis, keep_dim)
 

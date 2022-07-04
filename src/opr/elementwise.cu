@@ -1108,6 +1108,11 @@ Tensor sigmoid(Tensor& x) {
     return unary_op<SigmoidOp<Float32>>(x);
 }
 
+Tensor neg(Tensor& x) {
+    // FIXME:
+    return dispatch_unary_op<NegOp>(x);
+}
+
 Tensor copy(Tensor& x) {
     return dispatch_unary_op<CopyOp>(x);
 }

@@ -32,6 +32,7 @@ PYBIND11_MODULE(_tinydl, m) {
     m.def("op_log", &opr::log);
     m.def("op_exp", &opr::exp);
     m.def("op_sigmoid", &opr::sigmoid);
+    m.def("op_neg", &opr::neg);
 
     m.def("op_matmul", &opr::matmul);
 
