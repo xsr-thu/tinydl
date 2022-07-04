@@ -67,7 +67,7 @@ def loss_fn(pred, y):
     neg = tinydl.Tensor([[-1]])
     idx = tinydl.Tensor(np.arange(10)).view(1, 10)
     y = y.view(y.shape()[0], 1)
-    mask = tinydl.equal(idx, y)
+    mask = tinydl.equal(idx, y).as_float()
     
     loss = tinydl.log(p) * neg
     loss = (loss * mask).sum(1)
