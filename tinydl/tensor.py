@@ -99,7 +99,9 @@ class Tensor:
     def zero_grad(self):
         return self.data.zero_grad()
 
-    def backward(self, grad):
+    def backward(self, grad=None):
+        if grad is None:
+            grad = Tensor([1.])
         self.data.backward(grad.data)
 
     def grad(self):
