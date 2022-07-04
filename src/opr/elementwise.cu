@@ -314,7 +314,8 @@ shared_ptr<TensorStorage> binary_op(shared_ptr<TensorStorage> x, shared_ptr<Tens
         kernel_binary_op<Op><<<n_block, block_size>>>(res, x->data<DType>(), y->data<DType>(), x->size());
         cudaError_t err = cudaGetLastError();
         if (err != cudaSuccess) {
-            printf("cuda error %s\n", cudaGetErrorString(err));
+            fprintf(stderr, "cuda error %s\n", cudaGetErrorString(err));
+            throw std::runtime_error(cudaGetErrorString(err));
         }
         return make_shared<TensorStorage>(res, x->size(), x->shape(), x->strides(),
                 typeclass_to_enum<typename Op::RT>());
@@ -377,7 +378,7 @@ shared_ptr<TensorStorage> binary_op(shared_ptr<TensorStorage> x, shared_ptr<Tens
             out_format = TensorFormat::make_cuda_tensor_format(out_shape, out_strides);
         } else {
             fprintf(stderr, "binary op error\n");
-            throw "Error";
+            throw std::runtime_error("Binary operator Error");
         }
         
         cudaMalloc(&res, sizeof(typename Op::RT) * res_size);
@@ -393,6 +394,7 @@ shared_ptr<TensorStorage> binary_op(shared_ptr<TensorStorage> x, shared_ptr<Tens
         cudaError_t err = cudaGetLastError();
         if (err != cudaSuccess) {
             printf("cuda error %s\n", cudaGetErrorString(err));
+            throw std::runtime_error(cudaGetErrorString(err));
         }
         return make_shared<TensorStorage>(res, res_size, out_shape, out_strides,
                 typeclass_to_enum<typename Op::RT>());
@@ -411,7 +413,7 @@ shared_ptr<TensorStorage> dispatch_binary_op(shared_ptr<TensorStorage> x, shared
         case DataType::Bool:
             return binary_op<Op<Bool>>(x, y);
         default:
-            throw "Excepton";
+            throw std::runtime_error("Error: dispatch_binary_op");
     }
 }
 
@@ -429,6 +431,7 @@ shared_ptr<TensorStorage> unary_op(shared_ptr<TensorStorage> x) {
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
         printf("cuda error %s\n", cudaGetErrorString(err));
+        throw std::runtime_error(cudaGetErrorString(err));
     }
     return make_shared<TensorStorage>(res, x->size(), x->shape(), x->strides(),
             typeclass_to_enum<typename Op::RT>());
@@ -445,7 +448,7 @@ shared_ptr<TensorStorage> dispatch_unary_op(shared_ptr<TensorStorage> x) {
         case DataType::Bool:
             return unary_op<Op<Bool>>(x);
         default:
-            throw "Excepton";
+            throw std::runtime_error("Error: dispatch_unary_op");
     }
 }
 
@@ -460,6 +463,7 @@ shared_ptr<TensorStorage> copy_op(shared_ptr<TensorStorage> x) {
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
         printf("cuda error %s\n", cudaGetErrorString(err));
+        throw std::runtime_error(cudaGetErrorString(err));
     }
     return make_shared<TensorStorage>(res, x->size(), x->shape(), x->strides(),
             typeclass_to_enum<T>());
@@ -805,7 +809,7 @@ Tensor dispatch_binary_op(Tensor& x, Tensor& y) {
         case DataType::Bool:
             return binary_op<Op<Bool>>(x, y);
         default:
-            throw "Excepton";
+            throw std::runtime_error("Error: dispatch_binary_op");
     }
 }
 
@@ -1035,7 +1039,7 @@ Tensor dispatch_unary_op(Tensor& x) {
         case DataType::Bool:
             return unary_op<Op<Bool>>(x);
         default:
-            throw "Excepton";
+            throw std::runtime_error("Error: dispatch_unary_op");
     }
 }
 

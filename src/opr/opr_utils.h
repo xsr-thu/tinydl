@@ -84,10 +84,12 @@ struct TensorFormat{
         err = cudaMalloc(&dev_format, sizeof(TensorFormat));
         if (err != cudaSuccess) {
             printf("cuda error %s\n", cudaGetErrorString(err));
+            throw std::runtime_error(cudaGetErrorString(err));
         }
         err = cudaMemcpy(dev_format, &format, sizeof(TensorFormat), cudaMemcpyHostToDevice);
         if (err != cudaSuccess) {
             printf("cuda error %s\n", cudaGetErrorString(err));
+            throw std::runtime_error(cudaGetErrorString(err));
         }
         // printf("make format: %zu %p\n", format.shape[0], dev_format);
         return std::shared_ptr<TensorFormat>(dev_format, [](TensorFormat* ptr){cudaFree(ptr);});

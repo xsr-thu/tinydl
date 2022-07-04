@@ -202,7 +202,8 @@ shared_ptr<TensorStorage> reduction(const ReductionMode mode, shared_ptr<TensorS
 
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
-        printf("error\n");
+        printf("CUDA Error: %s\n", cudaGetErrorString(err));
+        throw std::runtime_error(cudaGetErrorString(err));
     }
 
     vector<size_t> out_shape;

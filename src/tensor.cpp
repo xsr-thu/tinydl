@@ -160,6 +160,7 @@ py::array_t<bool> Tensor::to_numpy<bool>() {
 void Tensor::backward(Tensor &grad) {
     if(!m_graph_node) {
         fprintf(stderr, "can not backward tensor (%zu)!\n", m_id);
+        throw std::runtime_error("Exception: can not backward throw this Tensor");
     } else {
         m_graph_node->set_grad_storage(grad.m_storage);
         backprop(m_graph_node);
@@ -174,7 +175,7 @@ shared_ptr<BackwardFunc> Tensor::grad_fn() {
 
 shared_ptr<Tensor> Tensor::grad() {
     if(!m_graph_node) {
-        printf("Tensor %zu no grad\n", this->m_id);
+        fprintf(stderr, "Tensor %zu does not has grad\n", this->m_id);
         return nullptr;
     }
     return std::make_shared<Tensor>(m_graph_node->grad_storage());

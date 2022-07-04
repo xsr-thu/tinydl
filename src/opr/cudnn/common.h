@@ -6,9 +6,9 @@
 #include <cudnn.h>
 #include <memory>
 
-#define CUDNN_CHECK(x) cudnn_check(x)
+#define CUDNN_CHECK(x) cudnn_check(x, __FILE__, __LINE__)
 
-void cudnn_check(cudnnStatus_t s);
+void cudnn_check(cudnnStatus_t s, std::string file, size_t line);
 
 
 class HandleManager {
